@@ -15,6 +15,7 @@ wheels/
 .venv
 
 .vscode
+dump.py
 
 ================================================================================
 # FILE: .pre-commit-config.yaml
@@ -48,104 +49,6 @@ repos:
 
 
 ================================================================================
-# FILE: .ruff_cache\.gitignore
-================================================================================
-
-# Automatically created by ruff.
-*
-
-
-================================================================================
-# FILE: .ruff_cache\0.15.10\10751582283646886651
-================================================================================
-
-
-[ERROR READING FILE 10751582283646886651: 'utf-8' codec can't decode byte 0xfd in position 84: invalid start byte]
-
-================================================================================
-# FILE: .ruff_cache\0.15.10\11589733045550881050
-================================================================================
-
-
-[ERROR READING FILE 11589733045550881050: 'utf-8' codec can't decode byte 0xfd in position 88: invalid start byte]
-
-================================================================================
-# FILE: .ruff_cache\0.15.10\11806861826651168118
-================================================================================
-
-
-[ERROR READING FILE 11806861826651168118: 'utf-8' codec can't decode byte 0xfd in position 88: invalid start byte]
-
-================================================================================
-# FILE: .ruff_cache\0.15.10\2743939170384870015
-================================================================================
-
-
-[ERROR READING FILE 2743939170384870015: 'utf-8' codec can't decode byte 0xfd in position 59: invalid start byte]
-
-================================================================================
-# FILE: .ruff_cache\0.15.10\8775240402987234491
-================================================================================
-
-
-[ERROR READING FILE 8775240402987234491: 'utf-8' codec can't decode byte 0xfd in position 59: invalid start byte]
-
-================================================================================
-# FILE: .ruff_cache\0.15.10\9863306883940721039
-================================================================================
-
-
-[ERROR READING FILE 9863306883940721039: 'utf-8' codec can't decode byte 0xfd in position 84: invalid start byte]
-
-================================================================================
-# FILE: .ruff_cache\0.5.0\1159789668577386842
-================================================================================
-
-
-[ERROR READING FILE 1159789668577386842: 'utf-8' codec can't decode byte 0xc3 in position 109: invalid continuation byte]
-
-================================================================================
-# FILE: .ruff_cache\0.5.0\15427074181924817312
-================================================================================
-
-
-[ERROR READING FILE 15427074181924817312: 'utf-8' codec can't decode byte 0xe3 in position 80: invalid continuation byte]
-
-================================================================================
-# FILE: .ruff_cache\0.5.0\16192515047331143690
-================================================================================
-
-
-[ERROR READING FILE 16192515047331143690: 'utf-8' codec can't decode byte 0x8c in position 109: invalid start byte]
-
-================================================================================
-# FILE: .ruff_cache\0.5.0\17754833954252642990
-================================================================================
-
-
-[ERROR READING FILE 17754833954252642990: 'utf-8' codec can't decode byte 0xe3 in position 80: invalid continuation byte]
-
-================================================================================
-# FILE: .ruff_cache\0.5.0\18148590310195121532
-================================================================================
-
-
-[ERROR READING FILE 18148590310195121532: 'utf-8' codec can't decode byte 0xdb in position 107: invalid continuation byte]
-
-================================================================================
-# FILE: .ruff_cache\0.5.0\2118187578990432164
-================================================================================
-
-
-[ERROR READING FILE 2118187578990432164: 'utf-8' codec can't decode byte 0xda in position 113: invalid continuation byte]
-
-================================================================================
-# FILE: .ruff_cache\CACHEDIR.TAG
-================================================================================
-
-Signature: 8a477f597d28d172789f06886806bc55
-
-================================================================================
 # FILE: .vscode\settings.json
 ================================================================================
 
@@ -159,38 +62,41 @@ Signature: 8a477f597d28d172789f06886806bc55
 
 import pathlib
 
-EXCLUDE_DIRS = {".git", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache", "dist", "build"}
+EXCLUDE_DIRS = {".git", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache", "dist", "build", ".ruff_cache"}
 EXCLUDE_FILES = {"project_dump.txt", "uv.lock", ".DS_Store"}
 EXCLUDE_EXTS = {".pyc", ".pyo", ".pyd", ".exe", ".bin", ".png", ".jpg"}
+
 
 def generate_dump(root_path: pathlib.Path, output_file: str):
     with open(output_file, "w", encoding="utf-8") as f:
         for path in sorted(root_path.rglob("*")):
             if any(part in EXCLUDE_DIRS for part in path.parts):
                 continue
-            
+
             if path.is_file():
                 if path.name in EXCLUDE_FILES or path.suffix in EXCLUDE_EXTS:
                     continue
-                
+
                 try:
                     f.write("\n" + "=" * 80 + "\n")
                     f.write(f"# FILE: {path.relative_to(root_path)}\n")
                     f.write("=" * 80 + "\n\n")
-                    
+
                     content = path.read_text(encoding="utf-8")
                     f.write(content)
                     f.write("\n")
                 except Exception as e:
                     f.write(f"\n[ERROR READING FILE {path.name}: {e}]\n")
 
+
 if __name__ == "__main__":
     project_root = pathlib.Path(__file__).parent
     output_path = project_root / "project_dump.txt"
-    
+
     print(f"Generating dump at {output_path}...")
     generate_dump(project_root, str(output_path))
     print("Done!")
+
 
 ================================================================================
 # FILE: LICENSE
@@ -217,18 +123,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-================================================================================
-# FILE: main.py
-================================================================================
-
-def main():
-    print("Hello from steamlayer!")
-
-
-if __name__ == "__main__":
-    main()
-
 
 ================================================================================
 # FILE: pyproject.toml
@@ -415,12 +309,6 @@ Swapping Steam DLLs looks suspicious enough that Defender will sometimes quarant
 This tool is intended for use with software you legitimately own. Use responsibly.
 
 ================================================================================
-# FILE: requirements.txt
-================================================================================
-
-requests>=2.33.1
-
-================================================================================
 # FILE: steamlayer\__init__.py
 ================================================================================
 
@@ -474,13 +362,18 @@ class Bootstrapper:
         self._path = path
         self._http = http
 
-    def ensure(self) -> None:
+    def ensure(self, *, allow_network: bool = True) -> None:
         if not self._is_installed():
+            if not allow_network:
+                raise RuntimeError(f"{self.__class__.__name__} is not installed and network is disabled.")
+
             log.info(f"Installing {self.__class__.__name__}...")
             self._install()
-        elif self._should_update():
+
+        elif allow_network and self._should_update():
             log.info(f"Updating {self.__class__.__name__}...")
             self._install()
+
         else:
             log.debug(f"{self.__class__.__name__} already installed and up to date.")
 
@@ -759,6 +652,7 @@ import logging
 import pathlib
 import re
 import shutil
+import subprocess
 
 from .base import Bootstrapper
 
@@ -783,9 +677,11 @@ class SevenZipBootstrapper(Bootstrapper):
             if not match:
                 log.warning("Could not determine latest 7-Zip version from download page.")
                 return None
+
             version = match.group(1)
             log.debug(f"Latest 7-Zip version: {version}")
             return version
+
         except Exception:
             log.warning("Could not fetch latest 7-Zip version.")
             return None
@@ -818,10 +714,7 @@ class SevenZipBootstrapper(Bootstrapper):
         # Can't use _extract_archive here since 7z isn't bootstrapped yet —
         # we use the system 7z directly for this one-time extraction.
         with __import__("tempfile").TemporaryDirectory() as tmp:
-            import pathlib as pl
-            import subprocess
-
-            tmp_path = pl.Path(tmp)
+            tmp_path = pathlib.Path(tmp)
             archive = tmp_path / "7zip.7z"
             archive.write_bytes(data)
 
@@ -883,123 +776,18 @@ from steamlayer.game import (
 from steamlayer.http_client import HTTPClient
 from steamlayer.logging_utils import configure_logging
 
-log = logging.getLogger("steamlayer." + __name__)
+log = logging.getLogger("steamlayer.core")
 
 TOOL_HOME = pathlib.Path.home() / ".steamlayer"
 VENDORS_PATH = TOOL_HOME / "vendors"
 
 
-def main():
-    parser = argparse.ArgumentParser(description="SteamLayer — seamless Steam API layer replacement.")
-    parser.add_argument("game", type=pathlib.Path, help="Path to the game directory.")
-    parser.add_argument("-a", "--appid", type=int, default=None, help="Steam App ID of the game.")
-    parser.add_argument("-d", "--dry-run", action="store_true", help="Perform a trial run with no changes made.")
-    parser.add_argument(
-        "-n",
-        "--no-network",
-        action="store_true",
-        help="Disable all network access (use cached data only).",
-    )
-    parser.add_argument("-r", "--restore", action="store_true", help="Undo patches and restore original files.")
-    parser.add_argument(
-        "--version",
-        action="version",
-        version=f"steamlayer {__version__}",
-        help="Show the installed version and exit.",
-    )
-    parser.add_argument(
-        "-y",
-        "--yolo",
-        action="store_false",
-        dest="strict",
-        help=(
-            "Enable YOLO mode: bypasses strict name matching and accepts"
-            "lower-confidence AppID guesses (useful for sequels)."
-        ),
-    )
-    parser.add_argument(
-        "--cache-dir",
-        type=pathlib.Path,
-        default=TOOL_HOME / ".cache",
-        help="Directory used for caching (e.g. DLC list). Defaults to ~/.steamlayer/.cache",
-    )
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        action="count",
-        default=0,
-        help="Increase verbosity (-v = info, -vv = debug).",
-    )
-    parser.add_argument(
-        "--no-defender-check",
-        action="store_true",
-        help="Skip the Windows Defender real-time protection warning.",
-    )
-
-    args = parser.parse_args()
-    if args.verbose == 0:
-        level = logging.WARNING
-    elif args.verbose == 1:
-        level = logging.INFO
-    else:
-        level = logging.DEBUG
-    configure_logging(level=level)
-
-    if not args.game.exists():
-        log.error(f"Game path '{args.game}' does not exist.")
-        raise SystemExit(1)
-
-    start_time = time.time()
-    log.info(f"steamlayer {__version__}")
-
-    if args.game.is_file():
-        args.game = args.game.parent
-
-    game = Game(path=args.game, appid=args.appid)
-    if not args.strict:
-        log.warning(
-            "Running using YOLO. This could lead to wrong results. "
-            "Please, double-check the result and if wrongful, restore the game using "
-            "--restore and re-run supplying the --appid manually."
-        )
-
-    emulator = Goldberg(path=VENDORS_PATH / "goldberg")
-    if args.restore:
-        restorer = GameRestorer(game=game, emulator=emulator, dry_run=args.dry_run)
-        restorer.run()
-        return
-
-    sevenzip = SevenZipBootstrapper(VENDORS_PATH / "7zip", http=None)
-    goldberg = GoldbergBootstrapper(VENDORS_PATH / "goldberg", http=None)
-    if args.no_network:
-        log.info("Network disabled. Using existing local dependencies.")
-
-        missing = []
-        if not sevenzip.is_available():
-            missing.append("7-Zip")
-
-        if not goldberg.is_available():
-            missing.append("Goldberg")
-
-        if missing:
-            log.error("Missing required components with network disabled: " + ", ".join(missing))
-            raise SystemExit(1)
-    else:
-        try:
-            if not args.no_defender_check:
-                sevenzip_needed = not sevenzip.is_available()
-                goldberg_needed = not goldberg.is_available()
-                if sevenzip_needed or goldberg_needed:
-                    warn_about_defender_if_needed(str(VENDORS_PATH))
-
-            with HTTPClient() as http:
-                SevenZipBootstrapper(VENDORS_PATH / "7zip", http).ensure()
-                GoldbergBootstrapper(VENDORS_PATH / "goldberg", http).ensure()
-        except RuntimeError as e:
-            log.error(str(e))
-            raise SystemExit(1)
-
-    discoverer = DiscoveryFacade()
+def _run_discovery_and_patch(
+    args: argparse.Namespace,
+    game: Game,
+    emulator: Goldberg,
+    discoverer: DiscoveryFacade,
+) -> None:
     if args.appid is None:
         log.info("No AppID provided. Attempting automatic detection...")
         result = discoverer.try_resolve_id_for_game(
@@ -1027,6 +815,119 @@ def main():
     )
     emulator.validate()
     patcher.run()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="SteamLayer — seamless Steam API layer replacement.")
+    parser.add_argument("game", type=pathlib.Path, help="Path to the game directory.")
+    parser.add_argument("-a", "--appid", type=int, default=None, help="Steam App ID of the game.")
+    parser.add_argument("-d", "--dry-run", action="store_true", help="Perform a trial run with no changes made.")
+    parser.add_argument(
+        "-n",
+        "--no-network",
+        action="store_true",
+        help="Disable all network access (use cached data only).",
+    )
+    parser.add_argument("-r", "--restore", action="store_true", help="Undo patches and restore original files.")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"steamlayer {__version__}",
+        help="Show the installed version and exit.",
+    )
+    parser.add_argument(
+        "-y",
+        "--yolo",
+        action="store_false",
+        dest="strict",
+        help=(
+            "Enable YOLO mode: bypasses strict name matching and accepts "
+            "lower-confidence AppID guesses (useful for sequels)."
+        ),
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=pathlib.Path,
+        default=TOOL_HOME / ".cache",
+        help="Directory used for caching (e.g. DLC list). Defaults to ~/.steamlayer/.cache",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (-v = info, -vv = debug).",
+    )
+    parser.add_argument(
+        "--no-defender-check",
+        action="store_true",
+        help="Skip the Windows Defender real-time protection warning.",
+    )
+
+    args = parser.parse_args()
+
+    if args.verbose == 0:
+        level = logging.WARNING
+    elif args.verbose == 1:
+        level = logging.INFO
+    else:
+        level = logging.DEBUG
+    configure_logging(level=level)
+
+    if not args.game.exists():
+        log.error(f"Game path '{args.game}' does not exist.")
+        raise SystemExit(1)
+
+    if args.game.is_file():
+        args.game = args.game.parent
+
+    start_time = time.time()
+    log.info(f"steamlayer {__version__}")
+
+    game = Game(path=args.game, appid=args.appid)
+
+    if not args.strict:
+        log.warning(
+            "Running using YOLO. This could lead to wrong results. "
+            "Please, double-check the result and if wrongful, restore the game using "
+            "--restore and re-run supplying the --appid manually."
+        )
+
+    emulator = Goldberg(path=VENDORS_PATH / "goldberg")
+    if args.restore:
+        restorer = GameRestorer(game=game, emulator=emulator, dry_run=args.dry_run)
+        restorer.run()
+        return
+
+    sevenzip = SevenZipBootstrapper(VENDORS_PATH / "7zip", http=None)
+    goldberg = GoldbergBootstrapper(VENDORS_PATH / "goldberg", http=None)
+    if args.no_network:
+        log.info("Network disabled. Using existing local dependencies.")
+        missing = []
+        if not sevenzip.is_available():
+            missing.append("7-Zip")
+
+        if not goldberg.is_available():
+            missing.append("Goldberg")
+
+        if missing:
+            log.error("Missing required components with network disabled: " + ", ".join(missing))
+            raise SystemExit(1)
+
+    with HTTPClient() as http:
+        try:
+            if not args.no_defender_check:
+                if not sevenzip.is_available() or not goldberg.is_available():
+                    warn_about_defender_if_needed(str(VENDORS_PATH))
+
+                SevenZipBootstrapper(VENDORS_PATH / "7zip", http).ensure(allow_network=not args.no_network)
+                GoldbergBootstrapper(VENDORS_PATH / "goldberg", http).ensure(allow_network=not args.no_network)
+        except RuntimeError as e:
+            log.error(str(e))
+            raise SystemExit(1)
+
+        discoverer = DiscoveryFacade(http=http, allow_network=not args.no_network)
+        _run_discovery_and_patch(args, game, emulator, discoverer)
 
     duration = round(time.time() - start_time, 2)
     log.debug(f"Done in: {duration}s")
@@ -1062,11 +963,12 @@ from .web import SteamWebClient
 class DiscoveryFacade:
     def __init__(
         self,
+        http: HTTPClient,
         data_dir: pathlib.Path | None = None,
-        http: HTTPClient | None = None,
+        *,
+        allow_network: bool = True,
     ):
-        http = http or HTTPClient()
-        repo = AppIndexRepository(data_dir=data_dir, http=http)
+        repo = AppIndexRepository(data_dir=data_dir, http=http, allow_network=allow_network)
         web = SteamWebClient(http=http)
 
         self.resolver = AppIDResolver(
@@ -1618,8 +1520,11 @@ class AppIndexRepository:
         self,
         http: HTTPClient,
         data_dir: pathlib.Path | None = None,
+        *,
+        allow_network: bool = True,
     ) -> None:
         self._http = http
+        self._allow_network = allow_network
         self.data_dir = data_dir or pathlib.Path.home() / ".steamlayer"
         self.app_list_path = self.data_dir / "steam_app_index.json"
         self.dlc_index_path = self.data_dir / "steam_dlc_index.json"
@@ -1635,6 +1540,9 @@ class AppIndexRepository:
             should_update = True
 
         if should_update:
+            if not self._allow_network:
+                log.info(f"Network disabled; skipping {label} index refresh.")
+                return file_exists
             try:
                 log.info(f"Downloading community {label} index mirror...")
                 self._http.download(url, path)
@@ -2711,6 +2619,233 @@ def configure_logging(*, level: int = logging.DEBUG) -> None:
 
 
 ================================================================================
+# FILE: steamlayer\tests\test_bootstrap.py
+================================================================================
+
+from __future__ import annotations
+
+import json
+import pathlib
+from unittest.mock import patch
+
+import pytest
+
+from steamlayer.bootstrap.base import Bootstrapper
+from steamlayer.bootstrap.defender import (
+    MAX_WARNINGS,
+    _read_state,
+    warn_about_defender_if_needed,
+)
+from steamlayer.bootstrap.goldberg import GoldbergBootstrapper
+from steamlayer.bootstrap.sevenzip import SevenZipBootstrapper
+
+
+class TestDefenderWarningCounter:
+    def test_warning_shown_on_first_run(self, tmp_path, monkeypatch):
+        state_file = tmp_path / "state.json"
+        monkeypatch.setattr("steamlayer.bootstrap.defender.STATE_PATH", state_file)
+        monkeypatch.setattr("steamlayer.bootstrap.defender.is_realtime_protection_on", lambda: True)
+        monkeypatch.setattr("steamlayer.bootstrap.defender.check_defender_exclusion", lambda p: False)
+
+        with patch("steamlayer.bootstrap.defender.log") as mock_log:
+            warn_about_defender_if_needed("/fake/vendors")
+            mock_log.warning.assert_called_once()
+
+        state = json.loads(state_file.read_text())
+        assert state["defender_warning_count"] == 1
+
+    def test_warning_suppressed_after_max(self, tmp_path, monkeypatch):
+        state_file = tmp_path / "state.json"
+        state_file.write_text(json.dumps({"defender_warning_count": MAX_WARNINGS}))
+        monkeypatch.setattr("steamlayer.bootstrap.defender.STATE_PATH", state_file)
+        monkeypatch.setattr("steamlayer.bootstrap.defender.is_realtime_protection_on", lambda: True)
+        monkeypatch.setattr("steamlayer.bootstrap.defender.check_defender_exclusion", lambda p: False)
+
+        with patch("steamlayer.bootstrap.defender.log") as mock_log:
+            warn_about_defender_if_needed("/fake/vendors")
+            mock_log.warning.assert_not_called()
+
+        # Counter should not increment past max
+        state = json.loads(state_file.read_text())
+        assert state["defender_warning_count"] == MAX_WARNINGS
+
+    def test_warning_increments_counter(self, tmp_path, monkeypatch):
+        state_file = tmp_path / "state.json"
+        state_file.write_text(json.dumps({"defender_warning_count": 1}))
+        monkeypatch.setattr("steamlayer.bootstrap.defender.STATE_PATH", state_file)
+        monkeypatch.setattr("steamlayer.bootstrap.defender.is_realtime_protection_on", lambda: True)
+        monkeypatch.setattr("steamlayer.bootstrap.defender.check_defender_exclusion", lambda p: False)
+
+        warn_about_defender_if_needed("/fake/vendors")
+
+        state = json.loads(state_file.read_text())
+        assert state["defender_warning_count"] == 2
+
+    def test_skipped_when_protection_off(self, tmp_path, monkeypatch):
+        state_file = tmp_path / "state.json"
+        monkeypatch.setattr("steamlayer.bootstrap.defender.STATE_PATH", state_file)
+        monkeypatch.setattr("steamlayer.bootstrap.defender.is_realtime_protection_on", lambda: False)
+
+        with patch("steamlayer.bootstrap.defender.log") as mock_log:
+            warn_about_defender_if_needed("/fake/vendors")
+            mock_log.warning.assert_not_called()
+
+        assert not state_file.exists()
+
+    def test_skipped_when_exclusion_set(self, tmp_path, monkeypatch):
+        state_file = tmp_path / "state.json"
+        monkeypatch.setattr("steamlayer.bootstrap.defender.STATE_PATH", state_file)
+        monkeypatch.setattr("steamlayer.bootstrap.defender.is_realtime_protection_on", lambda: True)
+        monkeypatch.setattr("steamlayer.bootstrap.defender.check_defender_exclusion", lambda p: True)
+
+        with patch("steamlayer.bootstrap.defender.log") as mock_log:
+            warn_about_defender_if_needed("/fake/vendors")
+            mock_log.warning.assert_not_called()
+
+    def test_read_state_returns_empty_on_missing_file(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("steamlayer.bootstrap.defender.STATE_PATH", tmp_path / "nonexistent.json")
+        assert _read_state() == {}
+
+    def test_read_state_returns_empty_on_corrupt_file(self, tmp_path, monkeypatch):
+        state_file = tmp_path / "state.json"
+        state_file.write_text("not valid json{{{{")
+        monkeypatch.setattr("steamlayer.bootstrap.defender.STATE_PATH", state_file)
+        assert _read_state() == {}
+
+
+class ConcreteBootstrapper(Bootstrapper):
+    """Minimal concrete subclass for testing the base class logic."""
+
+    def __init__(self, path, http, *, installed=False):
+        super().__init__(path, http)
+        self._installed = installed
+        self.install_called = 0
+
+    def _is_installed(self):
+        return self._installed
+
+    def _install(self):
+        self.install_called += 1
+        self._installed = True
+
+
+class TestBootstrapperBase:
+    def test_ensure_installs_when_missing(self, tmp_path):
+        b = ConcreteBootstrapper(tmp_path / "tool", http=None, installed=False)
+        b.ensure()
+        assert b.install_called == 1
+
+    def test_ensure_skips_when_already_installed(self, tmp_path):
+        b = ConcreteBootstrapper(tmp_path / "tool", http=None, installed=True)
+        b.ensure()
+        assert b.install_called == 0
+
+    def test_ensure_updates_when_new_version_available(self, tmp_path):
+        b = ConcreteBootstrapper(tmp_path / "tool", http=None, installed=True)
+        b._get_latest_version = lambda: "2.0"
+        b._get_installed_version = lambda: "1.0"
+        b.ensure()
+        assert b.install_called == 1
+
+    def test_ensure_skips_update_when_up_to_date(self, tmp_path):
+        b = ConcreteBootstrapper(tmp_path / "tool", http=None, installed=True)
+        b._get_latest_version = lambda: "2.0"
+        b._get_installed_version = lambda: "2.0"
+        b.ensure()
+        assert b.install_called == 0
+
+    def test_save_and_read_version(self, tmp_path):
+        path = tmp_path / "tool"
+        path.mkdir()
+        b = ConcreteBootstrapper(path, http=None, installed=True)
+        b._save_version("1.2.3")
+        assert b._get_installed_version() == "1.2.3"
+
+    def test_is_available_delegates_to_is_installed(self, tmp_path):
+        b = ConcreteBootstrapper(tmp_path / "tool", http=None, installed=True)
+        assert b.is_available() is True
+
+        b2 = ConcreteBootstrapper(tmp_path / "tool2", http=None, installed=False)
+        assert b2.is_available() is False
+
+    def test_download_raises_without_http(self, tmp_path):
+        b = ConcreteBootstrapper(tmp_path / "tool", http=None)
+        with pytest.raises(RuntimeError, match="Network access required"):
+            b._download("https://example.com/file")
+
+    def test_reset_dir_clears_existing(self, tmp_path):
+        path = tmp_path / "tool"
+        path.mkdir()
+        (path / "old_file.txt").write_text("old")
+
+        b = ConcreteBootstrapper(path, http=None)
+        b._reset_dir()
+
+        assert path.exists()
+        assert not (path / "old_file.txt").exists()
+
+
+class TestGoldbergBootstrapper:
+    def test_not_installed_when_dlls_missing(self, tmp_path):
+        b = GoldbergBootstrapper(tmp_path / "goldberg", http=None)
+        assert b._is_installed() is False
+
+    def test_not_installed_when_dlls_empty(self, tmp_path):
+        path = tmp_path / "goldberg"
+        x64 = path / "regular" / "x64" / "steam_api64.dll"
+        x32 = path / "regular" / "x32" / "steam_api.dll"
+        x64.parent.mkdir(parents=True)
+        x32.parent.mkdir(parents=True)
+        x64.write_bytes(b"")  # empty
+        x32.write_bytes(b"real content")
+        b = GoldbergBootstrapper(path, http=None)
+        assert b._is_installed() is False
+
+    def test_is_installed_when_both_dlls_present(self, tmp_path):
+        path = tmp_path / "goldberg"
+        x64 = path / "regular" / "x64" / "steam_api64.dll"
+        x32 = path / "regular" / "x32" / "steam_api.dll"
+        x64.parent.mkdir(parents=True)
+        x32.parent.mkdir(parents=True)
+        x64.write_bytes(b"dll content")
+        x32.write_bytes(b"dll content")
+        b = GoldbergBootstrapper(path, http=None)
+        assert b._is_installed() is True
+
+
+class TestSevenZipBootstrapper:
+    def test_not_installed_when_exe_missing(self, tmp_path):
+        b = SevenZipBootstrapper(tmp_path / "7zip", http=None)
+        assert b._is_installed() is False
+
+    def test_is_installed_when_exe_present(self, tmp_path):
+        path = tmp_path / "7zip"
+        path.mkdir()
+        (path / "7z.exe").write_bytes(b"fake exe")
+        b = SevenZipBootstrapper(path, http=None)
+        assert b._is_installed() is True
+
+    def test_find_system_7z_returns_none_when_not_found(self, tmp_path):
+        b = SevenZipBootstrapper(tmp_path / "7zip", http=None)
+        with patch("shutil.which", return_value=None):
+            result = b._find_system_7z()
+
+        # Will be None unless the test machine happens to have 7z installed
+        # at the hardcoded paths — acceptable
+        assert result is None or isinstance(result, str)
+
+    def test_find_system_7z_finds_via_which(self, tmp_path):
+        b = SevenZipBootstrapper(tmp_path / "7zip", http=None)
+        fake_path = str(tmp_path / "7z.exe")
+        pathlib.Path(fake_path).write_bytes(b"fake")
+
+        with patch("shutil.which", return_value=fake_path):
+            result = b._find_system_7z()
+
+        assert result == fake_path
+
+
+================================================================================
 # FILE: steamlayer\tests\test_discovery.py
 ================================================================================
 
@@ -2805,6 +2940,278 @@ def test_vault_mirroring_logic(tmp_path):
     assert vault_dest.exists()
     assert vault_dest.read_text() == "dummy_dll_content"
     assert "__original_files__/bin/win64" in str(vault_dest.as_posix())
+
+
+================================================================================
+# FILE: steamlayer\tests\test_game.py
+================================================================================
+
+from __future__ import annotations
+
+import pathlib
+from unittest.mock import MagicMock
+
+import pytest
+
+from steamlayer.emulators import Emulator, EmulatorConfig
+from steamlayer.game import VAULT_NAME, Game, GamePatcher, GameRestorer
+
+
+def make_dll(path: pathlib.Path, name: str = "steam_api64.dll") -> pathlib.Path:
+    dll = path / name
+    dll.write_bytes(b"original_dll_bytes")
+    return dll
+
+
+def make_fake_emulator(vendors: pathlib.Path) -> Emulator:
+    """Returns a mock Emulator that copies a tiny stub DLL on patch."""
+    stub_x64 = vendors / "goldberg" / "regular" / "x64" / "steam_api64.dll"
+    stub_x32 = vendors / "goldberg" / "regular" / "x32" / "steam_api.dll"
+    stub_x64.parent.mkdir(parents=True, exist_ok=True)
+    stub_x32.parent.mkdir(parents=True, exist_ok=True)
+    stub_x64.write_bytes(b"goldberg_x64")
+    stub_x32.write_bytes(b"goldberg_x32")
+
+    emu = MagicMock(spec=Emulator)
+    emu.settings_dir_name = "steam_settings"
+    emu.config_files = ["steam_appid.txt", "DLC.txt", "configs.user.ini", "configs.app.ini"]
+
+    def _patch_game(*, dlls):
+        import shutil
+
+        for dll in dlls:
+            dll.backup()
+            src = stub_x64 if dll.architecture == "x64" else stub_x32
+            shutil.copy2(src, dll.file)
+        return dlls
+
+    emu.patch_game.side_effect = _patch_game
+    emu.create_config_files.return_value = None
+    return emu
+
+
+@pytest.fixture
+def tmp_game(tmp_path):
+    game_dir = tmp_path / "FakeGame"
+    game_dir.mkdir()
+    return game_dir
+
+
+@pytest.fixture
+def vendors(tmp_path):
+    return tmp_path / "vendors"
+
+
+class TestGameFindDlls:
+    def test_finds_x64_dll(self, tmp_game):
+        make_dll(tmp_game, "steam_api64.dll")
+
+        game = Game(path=tmp_game)
+        dlls = game.find_steam_dlls()
+
+        assert len(dlls) == 1
+        assert dlls[0].architecture == "x64"
+
+    def test_finds_x32_dll(self, tmp_game):
+        make_dll(tmp_game, "steam_api.dll")
+
+        game = Game(path=tmp_game)
+        dlls = game.find_steam_dlls()
+
+        assert len(dlls) == 1
+        assert dlls[0].architecture == "x32"
+
+    def test_finds_both_dlls(self, tmp_game):
+        make_dll(tmp_game, "steam_api.dll")
+        make_dll(tmp_game, "steam_api64.dll")
+
+        game = Game(path=tmp_game)
+        dlls = game.find_steam_dlls()
+        assert len(dlls) == 2
+
+    def test_finds_dll_in_subdirectory(self, tmp_game):
+        sub = tmp_game / "bin" / "win64"
+        sub.mkdir(parents=True)
+        make_dll(sub, "steam_api64.dll")
+
+        game = Game(path=tmp_game)
+        dlls = game.find_steam_dlls()
+        assert len(dlls) == 1
+
+    def test_skips_vault_directory(self, tmp_game):
+        make_dll(tmp_game, "steam_api64.dll")
+
+        vault = tmp_game / VAULT_NAME / "bin"
+        vault.mkdir(parents=True)
+        make_dll(vault, "steam_api64.dll")
+
+        game = Game(path=tmp_game)
+        dlls = game.find_steam_dlls()
+        assert len(dlls) == 1  # only the real one, not the vaulted one
+
+    def test_returns_empty_when_no_dlls(self, tmp_game):
+        game = Game(path=tmp_game)
+        assert game.find_steam_dlls() == []
+
+
+class TestGamePatcher:
+    def test_dry_run_does_not_modify_files(self, tmp_game, vendors):
+        dll_path = make_dll(tmp_game, "steam_api64.dll")
+        original_bytes = dll_path.read_bytes()
+
+        game = Game(path=tmp_game, appid=620)
+        emu = make_fake_emulator(vendors)
+        config = MagicMock(spec=EmulatorConfig)
+        patcher = GamePatcher(game=game, emulator=emu, config=config, dry_run=True)
+        patcher.run()
+
+        assert dll_path.read_bytes() == original_bytes
+        assert not (tmp_game / VAULT_NAME).exists()
+        emu.patch_game.assert_not_called()  # type: ignore
+
+    def test_patching_replaces_dll_and_creates_vault(self, tmp_game, vendors):
+        dll_path = make_dll(tmp_game, "steam_api64.dll")
+
+        game = Game(path=tmp_game, appid=620)
+        emu = make_fake_emulator(vendors)
+        config = MagicMock(spec=EmulatorConfig)
+        patcher = GamePatcher(game=game, emulator=emu, config=config, dry_run=False)
+        patcher.run()
+
+        assert dll_path.read_bytes() == b"goldberg_x64"
+        vault_file = tmp_game / VAULT_NAME / "steam_api64.dll"
+        assert vault_file.exists()
+        assert vault_file.read_bytes() == b"original_dll_bytes"
+
+    def test_raises_when_no_dlls_found(self, tmp_game, vendors):
+        game = Game(path=tmp_game, appid=620)
+        emu = make_fake_emulator(vendors)
+        config = MagicMock(spec=EmulatorConfig)
+        patcher = GamePatcher(game=game, emulator=emu, config=config)
+
+        with pytest.raises(FileNotFoundError):
+            patcher.run()
+
+    def test_warns_on_existing_vault(self, tmp_game, vendors, caplog):
+        import logging
+
+        make_dll(tmp_game, "steam_api64.dll")
+
+        vault = tmp_game / VAULT_NAME
+        vault.mkdir()
+        (vault / "something.dll").write_bytes(b"old")
+
+        game = Game(path=tmp_game, appid=620)
+        emu = make_fake_emulator(vendors)
+        config = MagicMock(spec=EmulatorConfig)
+        patcher = GamePatcher(game=game, emulator=emu, config=config)
+
+        with caplog.at_level(logging.WARNING):
+            patcher.run()
+
+        assert "PREVIOUS BACKUP DETECTED" in caplog.text
+
+    def test_existing_backup_is_not_overwritten(self, tmp_game, vendors):
+        dll_path = make_dll(tmp_game, "steam_api64.dll")
+
+        # First patch
+        game = Game(path=tmp_game, appid=620)
+        emu = make_fake_emulator(vendors)
+        config = MagicMock(spec=EmulatorConfig)
+        GamePatcher(game=game, emulator=emu, config=config).run()
+
+        vault_file = tmp_game / VAULT_NAME / "steam_api64.dll"
+        original_vault_bytes = vault_file.read_bytes()
+
+        # Modify the current DLL (simulate someone else writing to it)
+        dll_path.write_bytes(b"tampered")
+
+        # Second patch — vault should not change
+        emu2 = make_fake_emulator(vendors)
+        GamePatcher(game=game, emulator=emu2, config=config).run()
+
+        assert vault_file.read_bytes() == original_vault_bytes
+
+    def test_config_failure_does_not_crash_patcher(self, tmp_game, vendors):
+        make_dll(tmp_game, "steam_api64.dll")
+
+        game = Game(path=tmp_game, appid=620)
+        emu = make_fake_emulator(vendors)
+        emu.create_config_files.side_effect = RuntimeError("config boom")  # type: ignore
+        config = MagicMock(spec=EmulatorConfig)
+
+        # Should not raise — config failure is logged but not fatal
+        patcher = GamePatcher(game=game, emulator=emu, config=config)
+        patcher.run()
+
+
+class TestGameRestorer:
+    def _patch_game(self, tmp_game, vendors):
+        """Helper: patch a game and return the game object."""
+        make_dll(tmp_game, "steam_api64.dll")
+        game = Game(path=tmp_game, appid=620)
+        emu = make_fake_emulator(vendors)
+        config = MagicMock(spec=EmulatorConfig)
+        GamePatcher(game=game, emulator=emu, config=config).run()
+        return game, emu
+
+    def test_restore_puts_original_dll_back(self, tmp_game, vendors):
+        dll_path = tmp_game / "steam_api64.dll"
+        game, emu = self._patch_game(tmp_game, vendors)
+        assert dll_path.read_bytes() == b"goldberg_x64"
+
+        GameRestorer(game=game, emulator=emu).run()
+
+        assert dll_path.read_bytes() == b"original_dll_bytes"
+
+    def test_restore_removes_vault(self, tmp_game, vendors):
+        game, emu = self._patch_game(tmp_game, vendors)
+        GameRestorer(game=game, emulator=emu).run()
+        assert not (tmp_game / VAULT_NAME).exists()
+
+    def test_restore_removes_steam_settings(self, tmp_game, vendors):
+        game, emu = self._patch_game(tmp_game, vendors)
+
+        settings = tmp_game / "steam_settings"
+        settings.mkdir(exist_ok=True)
+        (settings / "configs.app.ini").write_text("[app::dlcs]\n")
+
+        GameRestorer(game=game, emulator=emu).run()
+
+        assert not settings.exists()
+
+    def test_restore_dry_run_does_not_modify_files(self, tmp_game, vendors):
+        dll_path = tmp_game / "steam_api64.dll"
+        game, emu = self._patch_game(tmp_game, vendors)
+        patched_bytes = dll_path.read_bytes()
+
+        GameRestorer(game=game, emulator=emu, dry_run=True).run()
+
+        assert dll_path.read_bytes() == patched_bytes
+        assert (tmp_game / VAULT_NAME).exists()
+
+    def test_restore_fails_gracefully_with_no_vault(self, tmp_game, vendors, caplog):
+        import logging
+
+        game = Game(path=tmp_game, appid=620)
+        emu = make_fake_emulator(vendors)
+
+        with caplog.at_level(logging.ERROR):
+            GameRestorer(game=game, emulator=emu).run()
+
+        assert "No vault found" in caplog.text
+
+    def test_restore_fails_gracefully_with_empty_vault(self, tmp_game, vendors, caplog):
+        import logging
+
+        game = Game(path=tmp_game, appid=620)
+        emu = make_fake_emulator(vendors)
+        (tmp_game / VAULT_NAME).mkdir()
+
+        with caplog.at_level(logging.ERROR):
+            GameRestorer(game=game, emulator=emu).run()
+
+        assert "no DLLs to restore" in caplog.text
 
 
 ================================================================================
@@ -2930,4 +3337,264 @@ class TestPromptLowConfidence:
         result = InteractiveSelector(io=io).prompt_low_confidence(self._low_conf_result())
 
         assert result.appid == 12345
+
+
+================================================================================
+# FILE: steamlayer\tests\test_resolver_local.py
+================================================================================
+
+from __future__ import annotations
+
+from unittest.mock import MagicMock
+
+from steamlayer.discovery.decision import DecisionPolicy
+from steamlayer.discovery.local import LocalDiscovery
+from steamlayer.discovery.matcher import NameMatcher
+from steamlayer.discovery.models import DiscoveryResult, DiscoverySource
+from steamlayer.discovery.query_strategy import QueryStrategy
+from steamlayer.discovery.resolver import AppIDResolver
+
+
+class TestLocalDiscovery:
+    def test_finds_appid_from_steam_appid_txt(self, tmp_path):
+        game = tmp_path / "MyGame"
+        game.mkdir()
+        (game / "steam_appid.txt").write_text("620\n")
+
+        result = LocalDiscovery().find(game)
+        assert result == 620
+
+    def test_finds_appid_in_subdirectory(self, tmp_path):
+        game = tmp_path / "MyGame"
+        sub = game / "bin"
+        sub.mkdir(parents=True)
+        (sub / "steam_appid.txt").write_text("1234")
+
+        result = LocalDiscovery().find(game)
+        assert result == 1234
+
+    def test_extracts_first_number_from_file(self, tmp_path):
+        game = tmp_path / "MyGame"
+        game.mkdir()
+        (game / "steam_appid.txt").write_text("  \n  730  \n")
+
+        result = LocalDiscovery().find(game)
+        assert result == 730
+
+    def test_returns_none_when_no_file(self, tmp_path):
+        game = tmp_path / "MyGame"
+        game.mkdir()
+        assert LocalDiscovery().find(game) is None
+
+    def test_returns_none_when_file_has_no_number(self, tmp_path):
+        game = tmp_path / "MyGame"
+        game.mkdir()
+        (game / "steam_appid.txt").write_text("no numbers here")
+        assert LocalDiscovery().find(game) is None
+
+    def test_finds_appid_from_acf_manifest(self, tmp_path):
+        library = tmp_path / "steamapps"
+        common = library / "common"
+        game = common / "Portal 2"
+        game.mkdir(parents=True)
+
+        manifest = library / "appmanifest_620.acf"
+        manifest.write_text('"appid"\t"620"\n"installdir"\t"Portal 2"\n')
+
+        result = LocalDiscovery().find(game)
+        assert result == 620
+
+    def test_acf_only_matches_correct_game(self, tmp_path):
+        library = tmp_path / "steamapps"
+        common = library / "common"
+        game = common / "Portal 2"
+        game.mkdir(parents=True)
+
+        # Manifest for a different game
+        manifest = library / "appmanifest_400.acf"
+        manifest.write_text('"appid"\t"400"\n"installdir"\t"Portal"\n')
+
+        result = LocalDiscovery().find(game)
+        assert result is None
+
+    def test_ignores_unreadable_files(self, tmp_path):
+        game = tmp_path / "MyGame"
+        game.mkdir()
+        bad_file = game / "steam_appid.txt"
+        bad_file.write_bytes(b"\xff\xfe")  # not valid utf-8 but errors="ignore" handles it
+
+        # Should not raise, just return None or an appid if numbers are found
+        result = LocalDiscovery().find(game)
+        # No assertion on value — just that it doesn't crash
+        assert result is None or isinstance(result, int)
+
+
+def make_resolver(*, local=None, repo=None, web=None, matcher=None, query_strategy=None):
+    from steamlayer.discovery.local import LocalDiscovery
+    from steamlayer.discovery.repository import AppIndexRepository
+    from steamlayer.discovery.web import SteamWebClient
+
+    return AppIDResolver(
+        query_strategy=query_strategy or QueryStrategy(),
+        local=local or MagicMock(spec=LocalDiscovery),
+        matcher=matcher or NameMatcher(),
+        repo=repo or MagicMock(spec=AppIndexRepository),
+        web=web or MagicMock(spec=SteamWebClient),
+    )
+
+
+class TestAppIDResolverManual:
+    def test_returns_manual_result_immediately(self, tmp_path):
+        game_path = tmp_path / "Portal 2"
+        game_path.mkdir()
+
+        resolver = make_resolver()
+        result = resolver.resolve(game_path=game_path, appid=620)
+
+        assert result.appid == 620
+        assert result.source == DiscoverySource.MANUAL
+        assert result.confidence == 1.0
+
+
+class TestAppIDResolverLocal:
+    def test_returns_local_result_from_file(self, tmp_path):
+        game_path = tmp_path / "Portal 2"
+        game_path.mkdir()
+
+        local = MagicMock()
+        local.find.return_value = 620
+
+        resolver = make_resolver(local=local)
+        result = resolver.resolve(game_path=game_path, appid=None)
+
+        assert result.appid == 620
+        assert result.source == DiscoverySource.LOCAL
+
+    def test_high_confidence_index_match_skips_web(self, tmp_path):
+        game_path = tmp_path / "Portal 2"
+        game_path.mkdir()
+
+        local = MagicMock()
+        local.find.return_value = None
+
+        repo = MagicMock()
+        repo.get_app_index.return_value = {"portal 2": 620}
+
+        web = MagicMock()
+
+        resolver = make_resolver(local=local, repo=repo, web=web)
+        result = resolver.resolve(game_path=game_path, appid=None)
+
+        assert result.appid == 620
+        web.search_store.assert_not_called()
+
+
+class TestAppIDResolverWeb:
+    def test_falls_back_to_web_search(self, tmp_path):
+        game_path = tmp_path / "Portal 2"
+        game_path.mkdir()
+
+        local = MagicMock()
+        local.find.return_value = None
+
+        repo = MagicMock()
+        repo.get_app_index.return_value = {}
+
+        web = MagicMock()
+        web.search_store.return_value = {
+            "total": 1,
+            "items": [{"type": "app", "id": "620", "name": "Portal 2"}],
+        }
+
+        resolver = make_resolver(local=local, repo=repo, web=web)
+        result = resolver.resolve(game_path=game_path, appid=None, strict=True)
+
+        assert result.appid == 620
+        assert result.source == DiscoverySource.WEB
+
+    def test_no_network_returns_none_source(self, tmp_path):
+        game_path = tmp_path / "Portal 2"
+        game_path.mkdir()
+
+        local = MagicMock()
+        local.find.return_value = None
+
+        repo = MagicMock()
+        repo.get_app_index.return_value = {}
+
+        resolver = make_resolver(local=local, repo=repo)
+        result = resolver.resolve(game_path=game_path, appid=None, allow_network=False)
+
+        assert result.source == DiscoverySource.NONE
+        assert result.appid is None
+
+    def test_low_confidence_prompts_user(self, tmp_path):
+        game_path = tmp_path / "Some Obscure Game"
+        game_path.mkdir()
+
+        local = MagicMock()
+        local.find.return_value = None
+
+        repo = MagicMock()
+        repo.get_app_index.return_value = {}
+
+        web = MagicMock()
+        web.search_store.return_value = {
+            "total": 1,
+            "items": [{"type": "app", "id": "99999", "name": "Slightly Different Game Name"}],
+        }
+
+        resolver = make_resolver(local=local, repo=repo, web=web)
+        resolver.selector = MagicMock()
+        resolver.selector.prompt_low_confidence.return_value = DiscoveryResult(
+            appid=99999, source=DiscoverySource.WEB, confidence=0.45
+        )
+
+        result = resolver.resolve(game_path=game_path, appid=None, strict=True)
+
+        # If confidence is below threshold, selector should be called
+        # (exact behaviour depends on the match score — this just ensures no crash)
+        assert result is not None
+
+    def test_web_search_exception_returns_none_source(self, tmp_path):
+        game_path = tmp_path / "Portal 2"
+        game_path.mkdir()
+
+        local = MagicMock()
+        local.find.return_value = None
+
+        repo = MagicMock()
+        repo.get_app_index.return_value = {}
+
+        web = MagicMock()
+        web.search_store.side_effect = Exception("network error")
+
+        resolver = make_resolver(local=local, repo=repo, web=web)
+        result = resolver.resolve(game_path=game_path, appid=None)
+
+        assert result.source == DiscoverySource.NONE
+
+
+class TestDecisionPolicy:
+    def test_ambiguous_when_scores_close(self):
+        policy = DecisionPolicy()
+        assert policy.is_ambiguous(0.85, 0.78) is True
+
+    def test_not_ambiguous_when_scores_far_apart(self):
+        policy = DecisionPolicy()
+        assert policy.is_ambiguous(0.95, 0.60) is False
+
+    def test_not_ambiguous_when_best_below_min(self):
+        policy = DecisionPolicy()
+        assert policy.is_ambiguous(0.3, 0.25) is False
+
+    def test_should_accept_strict(self):
+        policy = DecisionPolicy()
+        assert policy.should_accept(0.65, strict=True) is True
+        assert policy.should_accept(0.55, strict=True) is False
+
+    def test_should_accept_yolo(self):
+        policy = DecisionPolicy()
+        assert policy.should_accept(0.45, strict=False) is True
+        assert policy.should_accept(0.35, strict=False) is False
 

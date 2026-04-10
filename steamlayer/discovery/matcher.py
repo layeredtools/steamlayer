@@ -83,4 +83,4 @@ class NameMatcher:
             length_diff = abs(len(t) - len(c))
             ratio -= 0.02 * length_diff
 
-        return round(max(0.0, ratio), 2)
+        return round(max(0.0, min(1.0, ratio)), 2)

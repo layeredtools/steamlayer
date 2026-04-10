@@ -11,3 +11,4 @@ wheels/
 
 .vscode
 dump.py
+project_dump.txt
