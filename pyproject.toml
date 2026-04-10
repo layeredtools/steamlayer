@@ -1,0 +1,42 @@
+[project]
+name = "steamlayer"
+version = "0.1.0"
+description = "Patch Steam games to use the Goldberg emulator — replaces Steam API DLLs, writes DLC config, and restores originals on demand."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "requests>=2.33.1",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.20.0",
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.3",
+    "ruff>=0.15.10",
+    "types-requests>=2.33.0.20260408",
+]
+
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+fix = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.13"
+strict = false
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = "steamlayer.tests.*"
+ignore_errors = true
+
+[project.scripts]
+steamlayer = "steamlayer.core:main"
