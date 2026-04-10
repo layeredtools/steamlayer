@@ -1,202 +1,125 @@
+<div align="center">
+
 # steamlayer
-![Python Version](https://img.shields.io/badge/python-3.13%2B-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Code Style](https://img.shields.io/badge/code%20style-ruff-000000)
-![Checked with mypy](https://img.shields.io/badge/mypy-checked-2ca447)
 
-Automatically patches Steam games to use the Goldberg Steam Emulator, replacing Steam API calls with a local compatibility layer and unlocking DLCs — minimal setup required.
+Patches Steam games to run through the [Goldberg emulator](https://github.com/Detanup01/gbe_fork).  
+Finds the AppID, grabs DLC info, swaps the DLLs, backs up the originals. One command.
 
-# DISCLAIMER
-THIS TOOL IS IN HEAVY WIP.
+![Python](https://img.shields.io/badge/python-3.13%2B-blue?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-Windows-lightgrey?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 
----
-
-## ⚠️ Before You Run
-
-**If you have Windows Defender real-time protection enabled, add an exclusion before running this tool:**
-
-1. Open **Windows Security** → **Virus & threat protection**
-2. Click **Manage settings**
-3. Scroll to **Exclusions**
-4. Click **Add or remove exclusions**
-5. Click **Add an exclusion** → **Folder**
-6. Select (or type) this path:
-   ```
-   C:\Users\<you>\.steamlayer\vendors
-   ```
-
-**Why?**  
-Replacing Steam API DLLs behaves similarly to how malware modifies executables. Defender may flag Goldberg as a false positive regardless of source.
-
-This exclusion is scoped to a single folder and does not reduce your system-wide protection.
+</div>
 
 ---
 
-## Features
+## What it does
 
-- **Auto-detects the game's AppID** from local files, a community app index, or the Steam store search API
-- **Fetches DLC metadata** automatically and writes it to Goldberg's config
-- **Bootstraps its own dependencies** (7-Zip and Goldberg) on first run
-- **Safe patching** — original DLLs are backed up and fully restorable
-- **Dry-run mode** — preview changes without modifying files
-- **Offline mode** — works from cached data only
+You point it at a game folder. It figures out the AppID (or you tell it), pulls DLC metadata from Steam, backs up the original `steam_api.dll` files, drops in Goldberg's replacements, and writes the config. If something breaks or you just want your files back, `--restore` undoes everything cleanly.
+
+7-Zip and Goldberg are downloaded automatically on first run — you don't install them manually.
 
 ---
 
-## Requirements
+> [!WARNING]
+> steamlayer is under active development and not yet production-ready. Expect rough edges, and always keep `--restore` in mind.
 
-- Python 3.13+
-- Windows
-- An existing `7z.exe` on your system (either in PATH or installed in the default location) **for the very first run**
+---
+
+## Installation
+
+```bash
+pip install steamlayer
+```
+
+Or with pipx if you want it isolated:
+
+```bash
+pipx install steamlayer
+```
+
+**Requirements:** 
+* Python 3.13+
+* Windows
+* 7-Zip somewhere on your system for the very first run (after that steamlayer manages its own copy).
 
 ---
 
 ## Usage
 
+```bash
+steamlayer "C:\Games\Portal 2"
 ```
-steamlayer <game_path> [options]
-```
 
-### Arguments
-
-| Argument | Description |
-|---|---|
-| `game` | Path to the game directory (or any file inside it) |
-| `-a`, `--appid` | Manually specify the Steam AppID |
-| `-d`, `--dry-run` | Preview changes without modifying files |
-| `-n`, `--no-network` | Disable network access (use cached data only) |
-| `-v`, `--verbose` | Increase verbosity (`-v` = info, `-vv` = debug) |
-| `-r`, `--restore` | Restore original files |
-| `-y`, `--yolo` | Accept lower-confidence AppID guesses |
-| `--cache-dir` | Custom cache directory (default: `~/.steamlayer/.cache`) |
-| `--no-defender-check` | Skip Defender warning |
-
----
-
-### Examples
+That's the common case. It'll do everything automatically. If the AppID detection gets it wrong, pass it explicitly:
 
 ```bash
-# Basic usage
-steamlayer "C:\Games\Portal 2"
-
-# Manual AppID
 steamlayer "C:\Games\Portal 2" --appid 620
+```
 
-# Dry run
+Not sure what it's going to do? Run with `--dry-run` first:
+
+```bash
 steamlayer "C:\Games\Portal 2" --dry-run
+```
 
-# Restore
+Something broke, want your files back:
+
+```bash
 steamlayer "C:\Games\Portal 2" --restore
-
-# Offline mode
-steamlayer "C:\Games\Portal 2" --no-network
 ```
 
----
+### All options
 
-## How It Works
-
-### 1. Bootstrap
-
-On first run, steamlayer installs dependencies into:
-
-```
-~/.steamlayer/vendors/
-```
-
-- **7-Zip** — downloaded and extracted using an existing system 7z
-- **Goldberg Emulator** — downloaded from GitHub and extracted using the vendored 7-Zip
-
-Subsequent runs skip this step if dependencies are already present.
-
----
-
-### 2. AppID Discovery
-
-Resolution order:
-
-1. CLI argument
-2. Local files (`steam_appid.txt`, Steam manifests)
-3. Local community index
-4. Steam store API
-
-If multiple matches are found, you’ll be prompted to choose.
-
----
-
-### 3. DLC Fetch
-
-DLC metadata is fetched and cached locally. Missing entries are resolved individually.
-
----
-
-### 4. Patching
-
-For each `steam_api.dll` / `steam_api64.dll`:
-
-1. Original DLL is backed up
-2. Goldberg DLL replaces it
-3. Configuration files are written:
-   - `configs.app.ini`
-   - `configs.user.ini`
-   - `steam_appid.txt`
-
----
-
-### 5. Restore
-
-`--restore` will:
-
-- Restore original DLLs
-- Remove generated config
-- Clean up vault directory
-
----
-
-## Data & Cache
-
-All data is stored in:
-
-```
-~/.steamlayer/
-```
-
-| Path | Contents |
+| Flag | Description |
 |---|---|
-| `vendors/7zip/` | 7-Zip binary |
-| `vendors/goldberg/` | Goldberg emulator |
-| `.cache/` | DLC cache |
+| `-a`, `--appid <id>` | Skip auto-detection and use this AppID |
+| `-d`, `--dry-run` | Show what would happen, don't touch anything |
+| `-n`, `--no-network` | Use cached data only, no requests |
+| `-r`, `--restore` | Put the original DLLs back and clean up |
+| `-y`, `--yolo` | Accept lower-confidence AppID matches |
+| `-v` / `-vv` | More output (`-v` = info, `-vv` = debug) |
+| `--cache-dir <path>` | Override the cache location |
+| `--no-defender-check` | Skip the Defender warning |
+| `--version` | Print the version and exit |
+
+---
+
+## How it works
+
+**AppID detection** — checks for `steam_appid.txt` or `.acf` manifest files in the game folder first. If nothing's there, it searches a locally-cached community index, then falls back to the Steam store API. If two results look equally likely, it asks you to pick.
+
+**DLC metadata** — fetches the DLC list from the Steam API and resolves names using the same community index. Anything missing from the index gets looked up individually. Results are cached for a week so repeat runs are fast.
+
+**Patching** — finds every `steam_api.dll` and `steam_api64.dll` in the game tree, vaults the originals to `<game>/__original_files__/`, and copies in the right Goldberg DLL (x32 or x64). Config files go in a `steam_settings/` folder next to each DLL, plus a `steam_appid.txt` at the game root.
+
+**Restore** — moves the vaulted DLLs back, deletes the `steam_settings/` directories, cleans up loose config files, and removes the vault once it's empty. Safe to re-run if it fails partway through.
+
+---
+
+## Windows Defender
+
+If real-time protection is on, add a folder exclusion before running:
+
+**Windows Security → Virus & threat protection → Manage settings → Exclusions → Add an exclusion → Folder**
+
+```
+C:\Users\<you>\.steamlayer\vendors
+```
+
+Swapping Steam DLLs looks suspicious enough that Defender will sometimes quarantine Goldberg's files mid-download. The exclusion keeps that from happening. It only covers this one folder, nothing else on your system.
 
 ---
 
 ## Troubleshooting
 
-### 7-Zip bootstrap fails
+**7-Zip bootstrap fails** — steamlayer needs an existing `7z.exe` to pull in its own copy. Make sure it's in `PATH` or installed at the default location (`C:\Program Files\7-Zip\`).
 
-Install 7-Zip and ensure it is:
+**Wrong game detected** — use `--appid`. You can find the right ID on [SteamDB](https://www.steamdb.info) or in the store URL.
 
-- available in PATH, or
-- installed in `C:\Program Files\7-Zip\`
+**Defender quarantined something mid-install** — add the exclusion above and re-run. steamlayer will re-download and retry cleanly.
 
----
-
-### AppID not detected correctly
-
-Run with:
-
-```bash
-steamlayer <game> --appid <id>
-```
-
----
-
-### Game issues after patching
-
-Restore original files:
-
-```bash
-steamlayer <game> --restore
-```
+**Game broken after patching** — run `--restore`. If that also fails partway through, run it again — it picks up where it left off.
 
 ---
 
