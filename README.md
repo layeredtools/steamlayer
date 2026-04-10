@@ -19,12 +19,10 @@ You point it at a game folder. It figures out the AppID (or you tell it), pulls 
 
 7-Zip and Goldberg are downloaded automatically on first run — you don't install them manually.
 
----
 
 > [!WARNING]
 > steamlayer is under active development and not yet production-ready. Expect rough edges, and always keep `--restore` in mind.
 
----
 
 ## Installation
 
