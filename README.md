@@ -1,6 +1,13 @@
 # steamlayer
+![Python Version](https://img.shields.io/badge/python-3.13%2B-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Code Style](https://img.shields.io/badge/code%20style-ruff-000000)
+![Checked with mypy](https://img.shields.io/badge/mypy-checked-2ca447)
 
 Automatically patches Steam games to use the Goldberg Steam Emulator, replacing Steam API calls with a local compatibility layer and unlocking DLCs — minimal setup required.
+
+# DISCLAIMER
+THIS TOOL IS IN HEAVY WIP.
 
 ---
 
