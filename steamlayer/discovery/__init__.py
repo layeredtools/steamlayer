@@ -16,11 +16,12 @@ from .web import SteamWebClient
 class DiscoveryFacade:
     def __init__(
         self,
+        http: HTTPClient,
         data_dir: pathlib.Path | None = None,
-        http: HTTPClient | None = None,
+        *,
+        allow_network: bool = True,
     ):
-        http = http or HTTPClient()
-        repo = AppIndexRepository(data_dir=data_dir, http=http)
+        repo = AppIndexRepository(data_dir=data_dir, http=http, allow_network=allow_network)
         web = SteamWebClient(http=http)
 
         self.resolver = AppIDResolver(

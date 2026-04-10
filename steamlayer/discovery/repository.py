@@ -22,8 +22,11 @@ class AppIndexRepository:
         self,
         http: HTTPClient,
         data_dir: pathlib.Path | None = None,
+        *,
+        allow_network: bool = True,
     ) -> None:
         self._http = http
+        self._allow_network = allow_network
         self.data_dir = data_dir or pathlib.Path.home() / ".steamlayer"
         self.app_list_path = self.data_dir / "steam_app_index.json"
         self.dlc_index_path = self.data_dir / "steam_dlc_index.json"
@@ -39,6 +42,9 @@ class AppIndexRepository:
             should_update = True
 
         if should_update:
+            if not self._allow_network:
+                log.info(f"Network disabled; skipping {label} index refresh.")
+                return file_exists
             try:
                 log.info(f"Downloading community {label} index mirror...")
                 self._http.download(url, path)

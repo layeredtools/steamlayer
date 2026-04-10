@@ -1,5 +1,22 @@
 
 ================================================================================
+# FILE: .gitignore
+================================================================================
+
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+.vscode
+
+================================================================================
 # FILE: .pre-commit-config.yaml
 ================================================================================
 
@@ -20,77 +37,186 @@ repos:
           "--check-untyped-defs",
           "--ignore-missing-imports"
         ]
+        additional_dependencies:
+          - types-requests
 
+================================================================================
+# FILE: .python-version
+================================================================================
+
+3.13
 
 
 ================================================================================
-# FILE: .pytest_cache\README.md
+# FILE: .ruff_cache\.gitignore
 ================================================================================
 
-# pytest cache directory #
-
-This directory contains data from the pytest's cache plugin,
-which provides the `--lf` and `--ff` options, as well as the `cache` fixture.
-
-**Do not** commit this to version control.
-
-See [the docs](https://docs.pytest.org/en/stable/how-to/cache.html) for more information.
+# Automatically created by ruff.
+*
 
 
+================================================================================
+# FILE: .ruff_cache\0.15.10\10751582283646886651
+================================================================================
+
+
+[ERROR READING FILE 10751582283646886651: 'utf-8' codec can't decode byte 0xfd in position 84: invalid start byte]
+
+================================================================================
+# FILE: .ruff_cache\0.15.10\11589733045550881050
+================================================================================
+
+
+[ERROR READING FILE 11589733045550881050: 'utf-8' codec can't decode byte 0xfd in position 88: invalid start byte]
+
+================================================================================
+# FILE: .ruff_cache\0.15.10\11806861826651168118
+================================================================================
+
+
+[ERROR READING FILE 11806861826651168118: 'utf-8' codec can't decode byte 0xfd in position 88: invalid start byte]
+
+================================================================================
+# FILE: .ruff_cache\0.15.10\2743939170384870015
+================================================================================
+
+
+[ERROR READING FILE 2743939170384870015: 'utf-8' codec can't decode byte 0xfd in position 59: invalid start byte]
+
+================================================================================
+# FILE: .ruff_cache\0.15.10\8775240402987234491
+================================================================================
+
+
+[ERROR READING FILE 8775240402987234491: 'utf-8' codec can't decode byte 0xfd in position 59: invalid start byte]
+
+================================================================================
+# FILE: .ruff_cache\0.15.10\9863306883940721039
+================================================================================
+
+
+[ERROR READING FILE 9863306883940721039: 'utf-8' codec can't decode byte 0xfd in position 84: invalid start byte]
+
+================================================================================
+# FILE: .ruff_cache\0.5.0\1159789668577386842
+================================================================================
+
+
+[ERROR READING FILE 1159789668577386842: 'utf-8' codec can't decode byte 0xc3 in position 109: invalid continuation byte]
+
+================================================================================
+# FILE: .ruff_cache\0.5.0\15427074181924817312
+================================================================================
+
+
+[ERROR READING FILE 15427074181924817312: 'utf-8' codec can't decode byte 0xe3 in position 80: invalid continuation byte]
+
+================================================================================
+# FILE: .ruff_cache\0.5.0\16192515047331143690
+================================================================================
+
+
+[ERROR READING FILE 16192515047331143690: 'utf-8' codec can't decode byte 0x8c in position 109: invalid start byte]
+
+================================================================================
+# FILE: .ruff_cache\0.5.0\17754833954252642990
+================================================================================
+
+
+[ERROR READING FILE 17754833954252642990: 'utf-8' codec can't decode byte 0xe3 in position 80: invalid continuation byte]
+
+================================================================================
+# FILE: .ruff_cache\0.5.0\18148590310195121532
+================================================================================
+
+
+[ERROR READING FILE 18148590310195121532: 'utf-8' codec can't decode byte 0xdb in position 107: invalid continuation byte]
+
+================================================================================
+# FILE: .ruff_cache\0.5.0\2118187578990432164
+================================================================================
+
+
+[ERROR READING FILE 2118187578990432164: 'utf-8' codec can't decode byte 0xda in position 113: invalid continuation byte]
+
+================================================================================
+# FILE: .ruff_cache\CACHEDIR.TAG
+================================================================================
+
+Signature: 8a477f597d28d172789f06886806bc55
+
+================================================================================
+# FILE: .vscode\settings.json
+================================================================================
+
+{
+  "python.analysis.autoImportCompletions": true
+}
 
 ================================================================================
 # FILE: dump.py
 ================================================================================
 
-from __future__ import annotations
-
 import pathlib
 
-ROOT = pathlib.Path(__file__).resolve().parents[1] / "steamlayer"
-OUTPUT = ROOT / "project_dump.txt"
+EXCLUDE_DIRS = {".git", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache", "dist", "build"}
+EXCLUDE_FILES = {"project_dump.txt", "uv.lock", ".DS_Store"}
+EXCLUDE_EXTS = {".pyc", ".pyo", ".pyd", ".exe", ".bin", ".png", ".jpg"}
 
-INCLUDE_EXTENSIONS = {".py", ".toml", ".md", ".yaml", ".yml"}
-EXCLUDE_DIRS = {".git", ".venv", "__pycache__", ".mypy_cache", ".ruff_cache"}
-
-
-def should_include(path: pathlib.Path) -> bool:
-    if path.suffix not in INCLUDE_EXTENSIONS:
-        return False
-
-    for part in path.parts:
-        if part in EXCLUDE_DIRS:
-            return False
-
-    return True
-
-
-def main() -> None:
-    files = sorted(p for p in ROOT.rglob("*") if p.is_file() and should_include(p))
-
-    with OUTPUT.open("w", encoding="utf-8") as out:
-        for file in files:
-            rel = file.relative_to(ROOT)
-
-            out.write(f"\n{'=' * 80}\n")
-            out.write(f"# FILE: {rel}\n")
-            out.write(f"{'=' * 80}\n\n")
-
-            try:
-                content = file.read_text(encoding="utf-8")
-            except Exception as e:
-                out.write(f"# ERROR READING FILE: {e}\n")
+def generate_dump(root_path: pathlib.Path, output_file: str):
+    with open(output_file, "w", encoding="utf-8") as f:
+        for path in sorted(root_path.rglob("*")):
+            if any(part in EXCLUDE_DIRS for part in path.parts):
                 continue
-
-            out.write(content)
-            out.write("\n\n")
-
-    print(f"Dump written to: {OUTPUT}")
-
+            
+            if path.is_file():
+                if path.name in EXCLUDE_FILES or path.suffix in EXCLUDE_EXTS:
+                    continue
+                
+                try:
+                    f.write("\n" + "=" * 80 + "\n")
+                    f.write(f"# FILE: {path.relative_to(root_path)}\n")
+                    f.write("=" * 80 + "\n\n")
+                    
+                    content = path.read_text(encoding="utf-8")
+                    f.write(content)
+                    f.write("\n")
+                except Exception as e:
+                    f.write(f"\n[ERROR READING FILE {path.name}: {e}]\n")
 
 if __name__ == "__main__":
-    main()
+    project_root = pathlib.Path(__file__).parent
+    output_path = project_root / "project_dump.txt"
+    
+    print(f"Generating dump at {output_path}...")
+    generate_dump(project_root, str(output_path))
+    print("Done!")
 
+================================================================================
+# FILE: LICENSE
+================================================================================
 
+MIT License
+
+Copyright (c) 2026
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 ================================================================================
 # FILE: main.py
@@ -102,7 +228,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
 ================================================================================
@@ -118,6 +243,11 @@ requires-python = ">=3.13"
 dependencies = [
     "requests>=2.33.1",
 ]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Environment :: Console",
+]
 
 [dependency-groups]
 dev = [
@@ -125,6 +255,7 @@ dev = [
     "pre-commit>=4.5.1",
     "pytest>=9.0.3",
     "ruff>=0.15.10",
+    "types-requests>=2.33.0.20260408",
 ]
 
 [tool.ruff]
@@ -142,8 +273,11 @@ indent-style = "space"
 [tool.mypy]
 python_version = "3.13"
 strict = false
-warn_unused_ignores = true
-warn_return_any = true
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = "steamlayer.tests.*"
+ignore_errors = true
 
 [project.scripts]
 steamlayer = "steamlayer.core:main"
@@ -153,198 +287,126 @@ steamlayer = "steamlayer.core:main"
 # FILE: README.md
 ================================================================================
 
+<div align="center">
+
 # steamlayer
 
-Automatically patches Steam games to use the Goldberg Steam Emulator, replacing Steam API calls with a local compatibility layer and unlocking DLCs — minimal setup required.
+Patches Steam games to run through the [Goldberg emulator](https://github.com/Detanup01/gbe_fork).  
+Finds the AppID, grabs DLC info, swaps the DLLs, backs up the originals. One command.
+
+![Python](https://img.shields.io/badge/python-3.13%2B-blue?style=flat-square)
+![Platform](https://img.shields.io/badge/platform-Windows-lightgrey?style=flat-square)
+![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
+
+</div>
 
 ---
 
-## ⚠️ Before You Run
+## What it does
 
-**If you have Windows Defender real-time protection enabled, add an exclusion before running this tool:**
+You point it at a game folder. It figures out the AppID (or you tell it), pulls DLC metadata from Steam, backs up the original `steam_api.dll` files, drops in Goldberg's replacements, and writes the config. If something breaks or you just want your files back, `--restore` undoes everything cleanly.
 
-1. Open **Windows Security** → **Virus & threat protection**
-2. Click **Manage settings**
-3. Scroll to **Exclusions**
-4. Click **Add or remove exclusions**
-5. Click **Add an exclusion** → **Folder**
-6. Select (or type) this path:
-   ```
-   C:\Users\<you>\.steamlayer\vendors
-   ```
+7-Zip and Goldberg are downloaded automatically on first run — you don't install them manually.
 
-**Why?**  
-Replacing Steam API DLLs behaves similarly to how malware modifies executables. Defender may flag Goldberg as a false positive regardless of source.
 
-This exclusion is scoped to a single folder and does not reduce your system-wide protection.
+> [!WARNING]
+> steamlayer is under active development and not yet production-ready. Expect rough edges, and always keep `--restore` in mind.
 
----
 
-## Features
+## Installation
 
-- **Auto-detects the game's AppID** from local files, a community app index, or the Steam store search API
-- **Fetches DLC metadata** automatically and writes it to Goldberg's config
-- **Bootstraps its own dependencies** (7-Zip and Goldberg) on first run
-- **Safe patching** — original DLLs are backed up and fully restorable
-- **Dry-run mode** — preview changes without modifying files
-- **Offline mode** — works from cached data only
+```bash
+pip install steamlayer
+```
 
----
+Or with pipx if you want it isolated:
 
-## Requirements
+```bash
+pipx install steamlayer
+```
 
-- Python 3.13+
-- Windows
-- An existing `7z.exe` on your system (either in PATH or installed in the default location) **for the very first run**
+**Requirements:** 
+* Python 3.13+
+* Windows
+* 7-Zip somewhere on your system for the very first run (after that steamlayer manages its own copy).
 
 ---
 
 ## Usage
 
+```bash
+steamlayer "C:\Games\Portal 2"
 ```
-steamlayer <game_path> [options]
-```
 
-### Arguments
-
-| Argument | Description |
-|---|---|
-| `game` | Path to the game directory (or any file inside it) |
-| `-a`, `--appid` | Manually specify the Steam AppID |
-| `-d`, `--dry-run` | Preview changes without modifying files |
-| `-n`, `--no-network` | Disable network access (use cached data only) |
-| `-v`, `--verbose` | Increase verbosity (`-v` = info, `-vv` = debug) |
-| `-r`, `--restore` | Restore original files |
-| `-y`, `--yolo` | Accept lower-confidence AppID guesses |
-| `--cache-dir` | Custom cache directory (default: `~/.steamlayer/.cache`) |
-| `--no-defender-check` | Skip Defender warning |
-
----
-
-### Examples
+That's the common case. It'll do everything automatically. If the AppID detection gets it wrong, pass it explicitly:
 
 ```bash
-# Basic usage
-steamlayer "C:\Games\Portal 2"
-
-# Manual AppID
 steamlayer "C:\Games\Portal 2" --appid 620
+```
 
-# Dry run
+Not sure what it's going to do? Run with `--dry-run` first:
+
+```bash
 steamlayer "C:\Games\Portal 2" --dry-run
+```
 
-# Restore
+Something broke, want your files back:
+
+```bash
 steamlayer "C:\Games\Portal 2" --restore
-
-# Offline mode
-steamlayer "C:\Games\Portal 2" --no-network
 ```
 
----
+### All options
 
-## How It Works
-
-### 1. Bootstrap
-
-On first run, steamlayer installs dependencies into:
-
-```
-~/.steamlayer/vendors/
-```
-
-- **7-Zip** — downloaded and extracted using an existing system 7z
-- **Goldberg Emulator** — downloaded from GitHub and extracted using the vendored 7-Zip
-
-Subsequent runs skip this step if dependencies are already present.
-
----
-
-### 2. AppID Discovery
-
-Resolution order:
-
-1. CLI argument
-2. Local files (`steam_appid.txt`, Steam manifests)
-3. Local community index
-4. Steam store API
-
-If multiple matches are found, you’ll be prompted to choose.
-
----
-
-### 3. DLC Fetch
-
-DLC metadata is fetched and cached locally. Missing entries are resolved individually.
-
----
-
-### 4. Patching
-
-For each `steam_api.dll` / `steam_api64.dll`:
-
-1. Original DLL is backed up
-2. Goldberg DLL replaces it
-3. Configuration files are written:
-   - `configs.app.ini`
-   - `configs.user.ini`
-   - `steam_appid.txt`
-
----
-
-### 5. Restore
-
-`--restore` will:
-
-- Restore original DLLs
-- Remove generated config
-- Clean up vault directory
-
----
-
-## Data & Cache
-
-All data is stored in:
-
-```
-~/.steamlayer/
-```
-
-| Path | Contents |
+| Flag | Description |
 |---|---|
-| `vendors/7zip/` | 7-Zip binary |
-| `vendors/goldberg/` | Goldberg emulator |
-| `.cache/` | DLC cache |
+| `-a`, `--appid <id>` | Skip auto-detection and use this AppID |
+| `-d`, `--dry-run` | Show what would happen, don't touch anything |
+| `-n`, `--no-network` | Use cached data only, no requests |
+| `-r`, `--restore` | Put the original DLLs back and clean up |
+| `-y`, `--yolo` | Accept lower-confidence AppID matches |
+| `-v` / `-vv` | More output (`-v` = info, `-vv` = debug) |
+| `--cache-dir <path>` | Override the cache location |
+| `--no-defender-check` | Skip the Defender warning |
+| `--version` | Print the version and exit |
+
+---
+
+## How it works
+
+**AppID detection** — checks for `steam_appid.txt` or `.acf` manifest files in the game folder first. If nothing's there, it searches a locally-cached community index, then falls back to the Steam store API. If two results look equally likely, it asks you to pick.
+
+**DLC metadata** — fetches the DLC list from the Steam API and resolves names using the same community index. Anything missing from the index gets looked up individually. Results are cached for a week so repeat runs are fast.
+
+**Patching** — finds every `steam_api.dll` and `steam_api64.dll` in the game tree, vaults the originals to `<game>/__original_files__/`, and copies in the right Goldberg DLL (x32 or x64). Config files go in a `steam_settings/` folder next to each DLL, plus a `steam_appid.txt` at the game root.
+
+**Restore** — moves the vaulted DLLs back, deletes the `steam_settings/` directories, cleans up loose config files, and removes the vault once it's empty. Safe to re-run if it fails partway through.
+
+---
+
+## Windows Defender
+
+If real-time protection is on, add a folder exclusion before running:
+
+**Windows Security → Virus & threat protection → Manage settings → Exclusions → Add an exclusion → Folder**
+
+```
+C:\Users\<you>\.steamlayer\vendors
+```
+
+Swapping Steam DLLs looks suspicious enough that Defender will sometimes quarantine Goldberg's files mid-download. The exclusion keeps that from happening. It only covers this one folder, nothing else on your system.
 
 ---
 
 ## Troubleshooting
 
-### 7-Zip bootstrap fails
+**7-Zip bootstrap fails** — steamlayer needs an existing `7z.exe` to pull in its own copy. Make sure it's in `PATH` or installed at the default location (`C:\Program Files\7-Zip\`).
 
-Install 7-Zip and ensure it is:
+**Wrong game detected** — use `--appid`. You can find the right ID on [SteamDB](https://www.steamdb.info) or in the store URL.
 
-- available in PATH, or
-- installed in `C:\Program Files\7-Zip\`
+**Defender quarantined something mid-install** — add the exclusion above and re-run. steamlayer will re-download and retry cleanly.
 
----
-
-### AppID not detected correctly
-
-Run with:
-
-```bash
-steamlayer <game> --appid <id>
-```
-
----
-
-### Game issues after patching
-
-Restore original files:
-
-```bash
-steamlayer <game> --restore
-```
+**Game broken after patching** — run `--restore`. If that also fails partway through, run it again — it picks up where it left off.
 
 ---
 
@@ -352,6 +414,11 @@ steamlayer <game> --restore
 
 This tool is intended for use with software you legitimately own. Use responsibly.
 
+================================================================================
+# FILE: requirements.txt
+================================================================================
+
+requests>=2.33.1
 
 ================================================================================
 # FILE: steamlayer\__init__.py
@@ -365,7 +432,6 @@ except PackageNotFoundError:
     __version__ = "dev"
 
 
-
 ================================================================================
 # FILE: steamlayer\__main__.py
 ================================================================================
@@ -376,7 +442,6 @@ if __name__ == "__main__":
     main()
 
 
-
 ================================================================================
 # FILE: steamlayer\bootstrap\__init__.py
 ================================================================================
@@ -384,7 +449,6 @@ if __name__ == "__main__":
 from .defender import warn_about_defender_if_needed as warn_about_defender_if_needed
 from .goldberg import GoldbergBootstrapper as GoldbergBootstrapper
 from .sevenzip import SevenZipBootstrapper as SevenZipBootstrapper
-
 
 
 ================================================================================
@@ -517,17 +581,36 @@ class Bootstrapper:
         return self._is_installed()
 
 
-
 ================================================================================
 # FILE: steamlayer\bootstrap\defender.py
 ================================================================================
 
 from __future__ import annotations
 
+import json
 import logging
+import pathlib
 import subprocess
 
 log = logging.getLogger("steamlayer.bootstrap.defender")
+
+STATE_PATH = pathlib.Path.home() / ".steamlayer" / "state.json"
+MAX_WARNINGS = 3
+
+
+def _read_state() -> dict:
+    try:
+        return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _write_state(state: dict) -> None:
+    try:
+        STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
+    except Exception:
+        log.debug("Could not write state file.")
 
 
 def is_realtime_protection_on() -> bool:
@@ -579,6 +662,12 @@ def warn_about_defender_if_needed(vendors_path: str) -> None:
     if check_defender_exclusion(vendors_path):
         return
 
+    state = _read_state()
+    shown = state.get("defender_warning_count", 0)
+    if shown >= MAX_WARNINGS:
+        log.debug("Defender warning suppressed (shown %d times).", shown)
+        return
+
     log.warning(
         "\n"
         "┌─ Windows Defender Warning ──────────────────────────────────────────┐\n"
@@ -593,6 +682,8 @@ def warn_about_defender_if_needed(vendors_path: str) -> None:
         "└─────────────────────────────────────────────────────────────────────┘\n"
     )
 
+    state["defender_warning_count"] = shown + 1
+    _write_state(state)
 
 
 ================================================================================
@@ -630,7 +721,7 @@ class GoldbergBootstrapper(Bootstrapper):
         if not self._http:
             raise RuntimeError("Network access required but HTTP client is not available.")
         try:
-            data = self._http.get(RELEASES_API).json()
+            data: dict[str, str] = self._http.get(RELEASES_API).json()
             return data.get("tag_name")
         except Exception:
             log.warning("Could not fetch latest Goldberg version from GitHub.")
@@ -656,7 +747,6 @@ class GoldbergBootstrapper(Bootstrapper):
         if latest:
             self._save_version(latest)
         log.info(f"Goldberg {latest} installed.")
-
 
 
 ================================================================================
@@ -757,11 +847,9 @@ class SevenZipBootstrapper(Bootstrapper):
         log.info(f"7-Zip {latest} installed at '{self._path}'.")
 
 
-
 ================================================================================
 # FILE: steamlayer\conftest.py
 ================================================================================
-
 
 
 
@@ -952,7 +1040,6 @@ if __name__ == "__main__":
         raise SystemExit(1)
 
 
-
 ================================================================================
 # FILE: steamlayer\discovery\__init__.py
 ================================================================================
@@ -1001,7 +1088,6 @@ class DiscoveryFacade:
         return self.dlc.fetch(*args, **kwargs)
 
 
-
 ================================================================================
 # FILE: steamlayer\discovery\decision.py
 ================================================================================
@@ -1020,7 +1106,6 @@ class DecisionPolicy:
     def should_accept(self, score: float, strict: bool) -> bool:
         threshold = 0.6 if strict else 0.4
         return score >= threshold
-
 
 
 ================================================================================
@@ -1159,7 +1244,6 @@ class DLCService:
             return {}
 
 
-
 ================================================================================
 # FILE: steamlayer\discovery\interaction.py
 ================================================================================
@@ -1244,7 +1328,6 @@ class InteractiveSelector:
                 self._io.write("Invalid choice. Try again.")
 
 
-
 ================================================================================
 # FILE: steamlayer\discovery\local.py
 ================================================================================
@@ -1300,7 +1383,6 @@ class LocalDiscovery:
                     continue
 
         return None
-
 
 
 ================================================================================
@@ -1395,7 +1477,6 @@ class NameMatcher:
         return round(max(0.0, ratio), 2)
 
 
-
 ================================================================================
 # FILE: steamlayer\discovery\models.py
 ================================================================================
@@ -1418,7 +1499,6 @@ class DiscoveryResult:
     confidence: float = 0.0
     game_name: str | None = None
     user_selected: bool = False
-
 
 
 ================================================================================
@@ -1508,7 +1588,6 @@ class QueryStrategy:
                 seen.add(q)
 
         return result
-
 
 
 ================================================================================
@@ -1603,7 +1682,6 @@ class AppIndexRepository:
                 lambda raw: {int(d["appid"]): str(d["name"]) for d in raw if d.get("appid") and d.get("name")},
             )
         return self._dlc_index
-
 
 
 ================================================================================
@@ -1801,7 +1879,6 @@ class AppIDResolver:
         return DiscoveryResult(source=DiscoverySource.NONE)
 
 
-
 ================================================================================
 # FILE: steamlayer\discovery\web.py
 ================================================================================
@@ -1828,7 +1905,7 @@ class SteamWebClient:
             return self._http.get(
                 self._STORE_SEARCH_URL,
                 params={"term": term, "l": "english", "cc": "US"},
-            ).json()
+            ).json()  # type: ignore[no-any-return]
         except RequestError as e:
             log.warning(f"Store search failed: {e}")
             return {}
@@ -1838,11 +1915,10 @@ class SteamWebClient:
             return self._http.get(
                 self._APP_DETAILS_URL,
                 params={"appids": appid, "filters": "basic"},
-            ).json()
+            ).json()  # type: ignore[no-any-return]
         except RequestError as e:
             log.warning(f"App details fetch failed for {appid}: {e}")
             return {}
-
 
 
 ================================================================================
@@ -1897,7 +1973,6 @@ class Emulator(metaclass=abc.ABCMeta):
     ) -> None: ...
 
 
-
 ================================================================================
 # FILE: steamlayer\emulators\goldberg\__init__.py
 ================================================================================
@@ -1906,7 +1981,6 @@ from __future__ import annotations
 
 from .config import GoldbergConfig as GoldbergConfig
 from .emulator import Goldberg as Goldberg
-
 
 
 ================================================================================
@@ -1988,7 +2062,6 @@ class GoldbergConfig(EmulatorConfig):
             log.info("Using legacy DLC configuration.")
             return self._write_legacy_dlcs(dest)
         return self._write_dlcs(dest)
-
 
 
 ================================================================================
@@ -2074,7 +2147,7 @@ class Goldberg(Emulator):
     def create_config_files(
         self,
         *,
-        config: GoldbergConfig,
+        config: GoldbergConfig,  # type: ignore
         appid: int | None,
         game_path: pathlib.Path,
         dll_paths: list[pathlib.Path],
@@ -2098,7 +2171,6 @@ class Goldberg(Emulator):
         if appid is not None:
             (game_path / "steam_appid.txt").write_text(str(appid), encoding="utf-8")
             log.info(f"Written steam_appid.txt to game root '{game_path}'.")
-
 
 
 ================================================================================
@@ -2184,7 +2256,6 @@ class SteamAPIDll(BackedUpFile):
     @property
     def architecture(self) -> Literal["x32", "x64"]:
         return "x64" if "64" in self.file.name else "x32"
-
 
 
 ================================================================================
@@ -2403,7 +2474,6 @@ class GameRestorer:
         log.info(f"{dry_prefix}Restoration completed successfully.")
 
 
-
 ================================================================================
 # FILE: steamlayer\http_client.py
 ================================================================================
@@ -2543,7 +2613,6 @@ class HTTPClient:
             tmp.unlink(missing_ok=True)
 
 
-
 ================================================================================
 # FILE: steamlayer\io_utils.py
 ================================================================================
@@ -2565,7 +2634,6 @@ class ConsoleIO:
 
     def read(self, prompt: str = "") -> str:
         return input(prompt).strip()
-
 
 
 ================================================================================
@@ -2642,7 +2710,6 @@ def configure_logging(*, level: int = logging.DEBUG) -> None:
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
-
 ================================================================================
 # FILE: steamlayer\tests\test_discovery.py
 ================================================================================
@@ -2712,12 +2779,11 @@ def test_fetch_dlcs_individual_failure(dlc_service: DLCService):
     assert dlcs[222] == "Some DLC"  # resolved correctly
 
 
-
 ================================================================================
 # FILE: steamlayer\tests\test_fileops.py
 ================================================================================
 
-from fileops import SteamAPIDll
+from steamlayer.fileops import SteamAPIDll
 
 
 def test_vault_mirroring_logic(tmp_path):
@@ -2739,7 +2805,6 @@ def test_vault_mirroring_logic(tmp_path):
     assert vault_dest.exists()
     assert vault_dest.read_text() == "dummy_dll_content"
     assert "__original_files__/bin/win64" in str(vault_dest.as_posix())
-
 
 
 ================================================================================
@@ -2865,5 +2930,4 @@ class TestPromptLowConfidence:
         result = InteractiveSelector(io=io).prompt_low_confidence(self._low_conf_result())
 
         assert result.appid == 12345
-
 

@@ -17,13 +17,18 @@ class Bootstrapper:
         self._path = path
         self._http = http
 
-    def ensure(self) -> None:
+    def ensure(self, *, allow_network: bool = True) -> None:
         if not self._is_installed():
+            if not allow_network:
+                raise RuntimeError(f"{self.__class__.__name__} is not installed and network is disabled.")
+
             log.info(f"Installing {self.__class__.__name__}...")
             self._install()
-        elif self._should_update():
+
+        elif allow_network and self._should_update():
             log.info(f"Updating {self.__class__.__name__}...")
             self._install()
+
         else:
             log.debug(f"{self.__class__.__name__} already installed and up to date.")
 

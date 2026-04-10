@@ -4,6 +4,7 @@ import logging
 import pathlib
 import re
 import shutil
+import subprocess
 
 from .base import Bootstrapper
 
@@ -28,9 +29,11 @@ class SevenZipBootstrapper(Bootstrapper):
             if not match:
                 log.warning("Could not determine latest 7-Zip version from download page.")
                 return None
+
             version = match.group(1)
             log.debug(f"Latest 7-Zip version: {version}")
             return version
+
         except Exception:
             log.warning("Could not fetch latest 7-Zip version.")
             return None
@@ -63,10 +66,7 @@ class SevenZipBootstrapper(Bootstrapper):
         # Can't use _extract_archive here since 7z isn't bootstrapped yet —
         # we use the system 7z directly for this one-time extraction.
         with __import__("tempfile").TemporaryDirectory() as tmp:
-            import pathlib as pl
-            import subprocess
-
-            tmp_path = pl.Path(tmp)
+            tmp_path = pathlib.Path(tmp)
             archive = tmp_path / "7zip.7z"
             archive.write_bytes(data)
 
