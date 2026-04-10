@@ -62,19 +62,20 @@ class QueryStrategy:
             if main:
                 queries.append(main)
 
-        no_numbers = re.sub(r"\b\d+\b", "", no_modifiers).strip()
-        if no_numbers and no_numbers != no_modifiers:
-            queries.append(no_numbers)
-
         if len(words) >= 2:
             queries.append(" ".join(words[:2]))
 
         if words:
             queries.append(words[0])
 
+        no_numbers = re.sub(r"\b\d+\b", "", no_modifiers).strip()
+        if no_numbers and no_numbers != no_modifiers:
+            no_numbers = " ".join(no_numbers.split())
+            if no_numbers:
+                queries.append(no_numbers)
+
         seen = set()
         result = []
-
         for q in queries:
             if q and q not in seen:
                 result.append(q)
