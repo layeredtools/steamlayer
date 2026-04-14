@@ -5,19 +5,19 @@
 Patches Steam games to run through the [Goldberg emulator](https://github.com/Detanup01/gbe_fork).  
 Finds the AppID, grabs DLC info, swaps the DLLs, backs up the originals. One command.
 
-![Python](https://img.shields.io/badge/python-3.13%2B-blue?style=flat-square)
-![Platform](https://img.shields.io/badge/platform-Windows-lightgrey?style=flat-square)
-![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
+[![PyPI version](https://img.shields.io/pypi/v/steamlayer.svg?style=flat-square)](https://pypi.org/project/steamlayer/)
+![Python 3.13+](https://img.shields.io/badge/python-3.13%2B-blue?style=flat-square)
+![Windows Only](https://img.shields.io/badge/platform-Windows-lightgrey?style=flat-square)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
+[View Demo](https://raw.githubusercontent.com/layeredtools/steamlayer/refs/heads/main/Animation.gif)
 </div>
 
 ---
 
 ## What it does
 
-You point it at a game folder. It figures out the AppID (or you tell it), pulls DLC metadata from Steam, backs up the original `steam_api.dll` files, drops in Goldberg's replacements, and writes the config. If something breaks or you just want your files back, `--restore` undoes everything cleanly.
-
-7-Zip, Goldberg, and Steamless are downloaded automatically on first run — you don't install them manually.
+`steamlayer` automates the tedious manual work of setting up game environments. It handles AppID discovery, DLC metadata fetching, DLL swapping, and SteamStub stripping in a single pass—all while keeping your original files safe in a managed vault.
 
 > [!WARNING]
 > steamlayer is under active development and not yet production-ready. Expect rough edges, and always keep `--restore` in mind.
@@ -39,8 +39,6 @@ pipx install steamlayer
 * Python 3.13+
 * Windows
 * 7-Zip somewhere on your system for the very first run (after that steamlayer manages its own copy).
-
----
 
 ## Usage
 
@@ -72,6 +70,19 @@ Something broke, want your files back:
 steamlayer "C:\Games\Portal 2" --restore
 ```
 
+> [!IMPORTANT] 
+> ## Windows Defender
+> If real-time protection is on, add a folder exclusion before running:
+>
+> **Windows Security → Virus & threat protection → Manage settings → Exclusions → Add an exclusion → Folder**
+>
+> ```
+> C:\Users\<you>\.steamlayer\vendors
+> ```
+> Swapping Steam DLLs looks suspicious enough that Defender will sometimes quarantine Goldberg's or Steamless's files mid-download. The exclusion keeps that from happening. It only covers this one folder, nothing else on your system.
+
+---
+
 ### All options
 
 | Flag | Description |
@@ -100,20 +111,6 @@ steamlayer "C:\Games\Portal 2" --restore
 **Patching** — finds every `steam_api.dll` and `steam_api64.dll` in the game tree, vaults the originals to `<game>/__original_files__/`, and copies in the right Goldberg DLL (x32 or x64). Config files go in a `steam_settings/` folder next to each DLL, plus a `steam_appid.txt` at the game root.
 
 **Restore** — moves the vaulted DLLs (and any vaulted executables) back, deletes the `steam_settings/` directories, cleans up loose config files, and removes the vault once it's empty. Safe to re-run if it fails partway through.
-
----
-
-## Windows Defender
-
-If real-time protection is on, add a folder exclusion before running:
-
-**Windows Security → Virus & threat protection → Manage settings → Exclusions → Add an exclusion → Folder**
-
-```
-C:\Users\<you>\.steamlayer\vendors
-```
-
-Swapping Steam DLLs looks suspicious enough that Defender will sometimes quarantine Goldberg's or Steamless's files mid-download. The exclusion keeps that from happening. It only covers this one folder, nothing else on your system.
 
 ---
 
