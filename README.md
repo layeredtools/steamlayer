@@ -10,7 +10,9 @@ Finds the AppID, grabs DLC info, swaps the DLLs, backs up the originals. One com
 ![Windows Only](https://img.shields.io/badge/platform-Windows-lightgrey?style=flat-square)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-[View Demo](https://github.com/layeredtools/steamlayer/raw/main/Animation.gif)
+<a href="https://raw.githubusercontent.com/layeredtools/steamlayer/main/Animation.gif">
+  <img src="https://raw.githubusercontent.com/layeredtools/steamlayer/main/Animation.gif" width="800" alt="steamlayer demo">
+</a>
 </div>
 
 ---
