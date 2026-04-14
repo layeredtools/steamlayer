@@ -1,6 +1,6 @@
 [project]
 name = "steamlayer"
-version = "0.1.0"
+version = "0.1.1"
 description = "Patch Steam games to use the Goldberg emulator — replaces Steam API DLLs, writes DLC config, and restores originals on demand."
 readme = "README.md"
 license = "MIT"
