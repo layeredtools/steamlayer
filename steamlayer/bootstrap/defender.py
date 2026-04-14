@@ -53,17 +53,17 @@ def check_defender_exclusion(path: str) -> bool:
 
 
 def warn_about_defender_if_needed(vendors_path: str) -> None:
-    if not is_realtime_protection_on():
-        return
-
-    if check_defender_exclusion(vendors_path):
-        return
-
     section = "defender"
     shown = state.get(section, "warning_count", 0)
 
     if shown >= MAX_WARNINGS:
         log.debug("Defender warning suppressed (shown %d times).", shown)
+        return
+
+    if not is_realtime_protection_on():
+        return
+
+    if check_defender_exclusion(vendors_path):
         return
 
     log.warning(

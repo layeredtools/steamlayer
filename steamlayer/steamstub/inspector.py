@@ -63,10 +63,6 @@ class SteamStubScanner:
             return SteamStubResult(detected=False, reason=f"read error: {exc}")
 
         result = self._scan_bytes(data)
-        if result.detected:
-            log.warning("'%s': %s", path.name, result)
-        else:
-            log.debug("'%s': %s", path.name, result)
         return result
 
     def scan_directory(self, directory: pathlib.Path) -> dict[pathlib.Path, SteamStubResult]:

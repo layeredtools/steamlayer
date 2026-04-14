@@ -27,7 +27,7 @@ from steamlayer.game import (
     GameRestorer,
 )
 from steamlayer.http_client import HTTPClient
-from steamlayer.logging_utils import configure_logging
+from steamlayer.logging_utils import configure_logging, spinner, success
 
 log = logging.getLogger("steamlayer.core")
 
@@ -47,15 +47,15 @@ def _run_discovery_and_patch(
             strict=args.strict,
         )
         game.appid = result.appid
-        log.info(f"Found appid '{game.appid}'")
 
     if game.appid is not None:
         dlc_cache_path = args.cache_dir / f"dlcs_{game.appid}.json"
-        game.dlcs = discoverer.fetch_dlcs(
-            game.appid,
-            cache_path=dlc_cache_path,
-            allow_network=not args.no_network,
-        )
+        with spinner("Fetching DLC metadata..."):
+            game.dlcs = discoverer.fetch_dlcs(
+                game.appid,
+                cache_path=dlc_cache_path,
+                allow_network=not args.no_network,
+            )
 
     config = GoldbergConfig().set_dlcs(game.dlcs)
     patcher = GamePatcher(
@@ -171,8 +171,11 @@ def main() -> None:
 
     emulator = Goldberg(path=VENDORS_PATH / "goldberg")
     if args.restore:
-        restorer = GameRestorer(game=game, emulator=emulator, dry_run=args.dry_run)
-        restorer.run()
+        with spinner("Restoring the patch..."):
+            restorer = GameRestorer(game=game, emulator=emulator, dry_run=args.dry_run)
+            restorer.run()
+            if not args.dry_run:
+                success(f"Restored '{game.path.name}' successfully.")
         return
 
     if args.no_network:
@@ -186,14 +189,20 @@ def main() -> None:
     with HTTPClient() as http:
         try:
             if not args.no_defender_check:
-                warn_about_defender_if_needed(str(VENDORS_PATH))
+                with spinner("Checking if real-time protection is on..."):
+                    warn_about_defender_if_needed(str(VENDORS_PATH))
 
             if args.unpack:
-                SteamlessBootstrapper(VENDORS_PATH / "steamless", http=http).ensure(
-                    allow_network=not args.no_network
-                )
-            SevenZipBootstrapper(VENDORS_PATH / "7zip", http).ensure(allow_network=not args.no_network)
-            GoldbergBootstrapper(VENDORS_PATH / "goldberg", http).ensure(allow_network=not args.no_network)
+                with spinner("Bootstrapping Steamless..."):
+                    SteamlessBootstrapper(VENDORS_PATH / "steamless", http=http).ensure(
+                        allow_network=not args.no_network
+                    )
+
+            with spinner("Bootstrapping 7-Zip..."):
+                SevenZipBootstrapper(VENDORS_PATH / "7zip", http).ensure(allow_network=not args.no_network)
+
+            with spinner("Bootstrapping Goldberg..."):
+                GoldbergBootstrapper(VENDORS_PATH / "goldberg", http).ensure(allow_network=not args.no_network)
 
         except RuntimeError as e:
             log.error(str(e))
@@ -201,6 +210,12 @@ def main() -> None:
 
         discoverer = DiscoveryFacade(http=http, allow_network=not args.no_network)
         _run_discovery_and_patch(args, game, emulator, discoverer)
+
+    dlc_count = len(game.dlcs)
+    success(
+        f"{'[DRY RUN] ' if args.dry_run else ''}Patched '{game.path.name}' "
+        f"(AppID {game.appid}, {dlc_count} DLC{'s' if dlc_count != 1 else ''})"
+    )
 
     duration = round(time.time() - start_time, 2)
     log.debug(f"Done in: {duration}s")

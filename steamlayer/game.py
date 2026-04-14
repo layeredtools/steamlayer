@@ -6,6 +6,7 @@ import shutil
 
 from steamlayer.emulators import Emulator, EmulatorConfig
 from steamlayer.fileops import BackedUpFile, SteamAPIDll
+from steamlayer.logging_utils import spinner
 from steamlayer.steamstub import SteamlessCLI, SteamStubScanner
 
 log = logging.getLogger("steamlayer." + __name__)
@@ -85,17 +86,9 @@ class GamePatcher:
             return
 
         if not self.unpack:
-            log.warning("─" * 60)
-            log.warning("⚠  STEAMSTUB (SteamDRM) DETECTED")
-            log.warning(
-                "\nOne or more executables are wrapped with SteamStub. Replacing the DLL might not be enough."
-            )
             for exe, variant in sorted(wrapped.items()):
                 rel = exe.relative_to(self.game.path) if exe.is_relative_to(self.game.path) else exe
-                log.warning(f"  {rel}  [{variant}]")
-
-            log.warning("\nRECOMMENDED: Run with '--unpack' to automate DRM removal via Steamless.")
-            log.warning("─" * 60)
+                log.warning(f"SteamStub detected on '{rel}' ({variant}) — re-run with --unpack to strip it.")
             return
 
         dry_prefix = "[DRY RUN] " if self.dry_run else ""
@@ -153,45 +146,49 @@ class GamePatcher:
         if not dlls:
             raise FileNotFoundError("No Steam API DLLs found in game directory.")
 
-        self._handle_steamstub(dlls)
+        with spinner("Handling steamstub..."):
+            self._handle_steamstub(dlls)
 
-        for dll in dlls:
-            relative_path = dll.file.relative_to(self.game.path)
-            vault_dest = self.vault_root / relative_path
-            dll.set_backup_destination(vault_dest)
-
-        if self.dry_run:
-            patched_dlls = dlls  # used for logging at the end
+        with spinner("Patching the game..."):
             for dll in dlls:
-                log.info(f"[DRY RUN] Would vault original to: {dll.backup_path}")
-                log.info(f"[DRY RUN] Would overwrite: {dll.file}")
+                relative_path = dll.file.relative_to(self.game.path)
+                vault_dest = self.vault_root / relative_path
+                dll.set_backup_destination(vault_dest)
 
-            for target_dir in {d.file.parent for d in dlls}:
-                log.info(
-                    f"[DRY RUN] Would configure '{target_dir}' using the following flags: "
-                    f"(APPID={self.game.appid} DLLS={dlls} DLCS={self.game.dlcs}). "
-                    f"User-specific information would also be correctly written."
-                )
+            if self.dry_run:
+                patched_dlls = dlls  # used for logging at the end
+                for dll in dlls:
+                    log.info(f"[DRY RUN] Would vault original to: {dll.backup_path}")
+                    log.info(f"[DRY RUN] Would overwrite: {dll.file}")
 
-        else:
-            patched_dlls = self.emulator.patch_game(dlls=dlls)
-            try:
-                self.emulator.create_config_files(
-                    config=self.config,
-                    appid=self.game.appid,
-                    game_path=self.game.path,
-                    dll_paths=[d.file for d in patched_dlls],
-                )
-            except Exception as e:
-                log.error(
-                    f"Config creation failed: {e}. The DLL patch was still applied "
-                    "— the game may still work with default settings."
-                )
+                for target_dir in {d.file.parent for d in dlls}:
+                    log.info(
+                        f"[DRY RUN] Would configure '{target_dir}' using the following flags: "
+                        f"(APPID={self.game.appid} DLLS={dlls} DLCS={self.game.dlcs}). "
+                        f"User-specific information would also be correctly written."
+                    )
 
-        dlc_count = len(self.game.dlcs) if self.game.dlcs else 0
-        dll_count = len(patched_dlls)
+            else:
+                patched_dlls = self.emulator.patch_game(dlls=dlls)
+                try:
+                    self.emulator.create_config_files(
+                        config=self.config,
+                        appid=self.game.appid,
+                        game_path=self.game.path,
+                        dll_paths=[d.file for d in patched_dlls],
+                    )
+                except Exception as e:
+                    log.error(
+                        f"Config creation failed: {e}. The DLL patch was still applied "
+                        "— the game may still work with default settings."
+                    )
 
-        log.info(f"{dry_prefix}Patch completed successfully (AppID={appid}, DLLs={dll_count}, DLCs={dlc_count})")
+            dlc_count = len(self.game.dlcs) if self.game.dlcs else 0
+            dll_count = len(patched_dlls)
+
+            log.info(
+                f"{dry_prefix}Patch completed successfully (AppID={appid}, DLLs={dll_count}, DLCs={dlc_count})"
+            )
 
 
 class GameRestorer:

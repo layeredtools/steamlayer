@@ -3,6 +3,8 @@ from __future__ import annotations
 import logging
 import pathlib
 
+from steamlayer.logging_utils import spinner
+
 from .decision import DecisionPolicy
 from .interaction import InteractiveSelector
 from .local import LocalDiscovery
@@ -129,38 +131,41 @@ class AppIDResolver:
                 confidence=1.0,
             )
 
-        original_name = game_path.name
-        local_id = self.local.find(game_path)
-        if local_id:
-            return DiscoveryResult(appid=local_id, source=DiscoverySource.LOCAL, confidence=1.0)
+        with spinner("Looking in the local game files..."):
+            original_name = game_path.name
+            local_id = self.local.find(game_path)
+            if local_id:
+                return DiscoveryResult(appid=local_id, source=DiscoverySource.LOCAL, confidence=1.0)
 
-        index_res = self._find_local_index(original_name)
-        all_candidates: list[DiscoveryResult] = []
-        if index_res.appid is not None:
-            if index_res.confidence >= 0.85:
-                log.info(f"Resolved via local index: {index_res.appid}")
-                return index_res
+        with spinner("Looking in the local index..."):
+            index_res = self._find_local_index(original_name)
+            all_candidates: list[DiscoveryResult] = []
+            if index_res.appid is not None:
+                if index_res.confidence >= 0.85:
+                    log.info(f"Resolved via local index: {index_res.appid}")
+                    return index_res
 
-            elif index_res.confidence > 0.4:
-                all_candidates.append(index_res)
+                elif index_res.confidence > 0.4:
+                    all_candidates.append(index_res)
 
         if not allow_network:
             log.warning("AppID discovery failed. Network is disabled.")
             return DiscoveryResult(source=DiscoverySource.NONE)
 
         log.info(f"Searching Steam for: '{original_name}'...")
-        queries = self.query_strategy.generate(original_name)
-        for query in queries:
-            log.debug(f"[QUERY] Trying: '{query}'")
-            web_results = self._find_web(query)
+        with spinner(f"Searching steam for {original_name}..."):
+            queries = self.query_strategy.generate(original_name)
+            for query in queries:
+                log.debug(f"[QUERY] Trying: '{query}'")
+                web_results = self._find_web(query)
 
-            for res in web_results:
-                res.confidence = self.matcher.calculate_confidence(original_name, res.game_name or "")
-                if res.confidence > 0.4:
-                    all_candidates.append(res)
+                for res in web_results:
+                    res.confidence = self.matcher.calculate_confidence(original_name, res.game_name or "")
+                    if res.confidence > 0.4:
+                        all_candidates.append(res)
 
-            if any(c.confidence >= 1.0 for c in all_candidates):
-                break
+                if any(c.confidence >= 1.0 for c in all_candidates):
+                    break
 
         if all_candidates:
             all_candidates.sort(key=lambda x: x.confidence, reverse=True)
