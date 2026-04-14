@@ -10,10 +10,10 @@ def _enable_windows_ansi_colors() -> None:
         return
 
     try:
-        import ctypes  # stdlib
+        import ctypes
 
         kernel32 = ctypes.windll.kernel32
-        handle = kernel32.GetStdHandle(-11)  # STD_OUTPUT_HANDLE
+        handle = kernel32.GetStdHandle(-12)  # STD_ERROR_HANDLE
         mode = ctypes.c_uint32()
         if kernel32.GetConsoleMode(handle, ctypes.byref(mode)) == 0:
             return

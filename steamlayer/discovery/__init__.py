@@ -23,11 +23,12 @@ class DiscoveryFacade:
     ):
         repo = AppIndexRepository(data_dir=data_dir, http=http, allow_network=allow_network)
         web = SteamWebClient(http=http)
+        matcher = NameMatcher()
 
         self.resolver = AppIDResolver(
-            query_strategy=QueryStrategy(),
+            query_strategy=QueryStrategy(matcher),
             local=LocalDiscovery(),
-            matcher=NameMatcher(),
+            matcher=matcher,
             repo=repo,
             web=web,
         )

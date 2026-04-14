@@ -99,7 +99,9 @@ class HTTPClient:
             response.raise_for_status()
             return response
         except requests.exceptions.HTTPError as e:
-            raise RequestError(str(e), status_code=e.response.status_code if e.response is not None else None) from e
+            raise RequestError(
+                str(e), status_code=e.response.status_code if e.response is not None else None
+            ) from e
         except requests.exceptions.RequestException as e:
             raise RequestError(str(e)) from e
 
@@ -126,7 +128,9 @@ class HTTPClient:
             tmp.replace(dest)
             log.debug(f"Downloaded {url} -> {dest}")
         except requests.exceptions.HTTPError as e:
-            raise RequestError(str(e), status_code=e.response.status_code if e.response is not None else None) from e
+            raise RequestError(
+                str(e), status_code=e.response.status_code if e.response is not None else None
+            ) from e
         except requests.exceptions.RequestException as e:
             raise RequestError(str(e)) from e
         finally:

@@ -4,18 +4,23 @@ import logging
 import pathlib
 import shutil
 import subprocess
+import time
 
+from steamlayer import state
 from steamlayer.http_client import HTTPClient, RequestError
 
 log = logging.getLogger("steamlayer.bootstrap")
 
-VERSION_FILE = "_version.txt"
+UPDATE_TTL = 86400  # 1 day
 
 
 class Bootstrapper:
+    _name = ""
+
     def __init__(self, path: pathlib.Path, http: HTTPClient | None) -> None:
         self._path = path
         self._http = http
+        self._cached_latest: str | None = None
 
     def ensure(self, *, allow_network: bool = True) -> None:
         if not self._is_installed():
@@ -42,25 +47,34 @@ class Bootstrapper:
         return None
 
     def _get_installed_version(self) -> str | None:
-        version_file = self._path / VERSION_FILE
-        if version_file.exists():
-            return version_file.read_text(encoding="utf-8").strip()
-        return None
+        return state.get(self._name, "version", None)
+
+    def _get_last_checked_time(self) -> int:
+        return state.get(self._name, "last_check", 0)
 
     def _save_version(self, version: str) -> None:
-        (self._path / VERSION_FILE).write_text(version, encoding="utf-8")
+        return state.update_section(self._name, version=version, last_check=time.time())
 
     def _should_update(self) -> bool:
+        elapsed = time.time() - self._get_last_checked_time()
+        if elapsed < UPDATE_TTL:
+            log.debug("%s metadata is fresh (age: %.1fh). Skipping check.", self._name, elapsed / 3600)
+            return False
+
         latest = self._get_latest_version()
+        self._cached_latest = latest
         if latest is None:
             return False
+
         installed = self._get_installed_version()
         if installed is None:
             log.info(f"{self.__class__.__name__}: no version file found, assuming update needed.")
             return True
+
         if latest != installed:
             log.info(f"{self.__class__.__name__} update available: {installed} → {latest}")
             return True
+
         log.debug(f"{self.__class__.__name__} is up to date ({installed}).")
         return False
 
@@ -68,9 +82,11 @@ class Bootstrapper:
         candidate = self._path.parent / "7zip" / "7z.exe"
         if candidate.exists():
             return str(candidate)
+
         found = shutil.which("7z")
         if found:
             return found
+
         raise FileNotFoundError("7-Zip not found.")
 
     def _extract_archive(
@@ -99,6 +115,7 @@ class Bootstrapper:
         result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
+            shutil.rmtree(extract_tmp, ignore_errors=True)
             hint = ""
             if "virus" in result.stderr.lower() or "unwanted" in result.stderr.lower():
                 hint = (
@@ -107,7 +124,6 @@ class Bootstrapper:
                     f"  {self._path.parent}"
                 )
             raise RuntimeError(f"7-Zip extraction failed:\n{result.stderr}{hint}")
-
         return extract_tmp
 
     def _download(self, url: str) -> bytes:

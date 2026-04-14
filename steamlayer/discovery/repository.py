@@ -79,7 +79,9 @@ class AppIndexRepository:
                 self.app_list_path,
                 self.APP_LIST_URL,
                 "App",
-                lambda raw: {str(a["name"]).lower(): int(a["appid"]) for a in raw if a.get("name") and a.get("appid")},
+                lambda raw: {
+                    str(a["name"]).lower(): int(a["appid"]) for a in raw if a.get("name") and a.get("appid")
+                },
             )
         return self._app_index
 

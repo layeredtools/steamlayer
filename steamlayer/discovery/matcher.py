@@ -1,21 +1,41 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from difflib import SequenceMatcher
 
 
 class NameMatcher:
     SCENE_PATTERNS = [
-        r"v\d+(\.\d+)*",
-        r"\d+\.\d+(\.\d+)*",
-        r"repack",
-        r"dodi",
-        r"fitgirl",
-        r"elamigos",
-        r"build\.\d+",
-        r"goldberg",
-        r"crack",
-        r"multi\d+",
+        # --- Versioning & Technical Info ---
+        r"\bv\d+([._]\d+)+\b",  # v15.1, v1.0.3, v1_0
+        r"\b\d+([._]\d+)+\b",  # 15.1, 1.0.3
+        r"\bbuild\.\d+\b",  # e.g., build.12345
+        r"\bmulti\d+\b",  # e.g., multi12
+        # --- Repackers ---
+        r"\bfitgirl\b",
+        r"\bdodi\b",
+        r"\belamigos\b",
+        r"\bcygnus\b",  # Added for NieR test
+        r"\brepack(s)?\b",
+        # --- Scene Groups ---
+        r"\brune\b",
+        r"\btenoke\b",
+        r"\bskidrow\b",
+        r"\bflt\b",
+        r"\brazor1911\b",
+        r"\bcodex\b",
+        r"\breloaded\b",
+        r"\bempress\b",
+        r"\balias\b",
+        r"\bgoldberg\b",
+        # --- General Junk ---
+        r"\bcrack\b",
+        r"\bgog\b",
+        r"\bproper\b",
+        r"\binternal\b",
+        r"\breadnfo\b",
+        r"\bpreorder\b",
     ]
 
     BAD_TOKENS = {
@@ -30,32 +50,68 @@ class NameMatcher:
         "kit",
     }
 
-    def clean_name(self, name: str) -> str:
-        for pattern in self.SCENE_PATTERNS:
-            name = re.sub(pattern, "", name, flags=re.IGNORECASE)
+    EDITION_KEYWORDS = {"edition", "complete", "goty", "remastered", "ultimate", "deluxe", "remake", "game of the"}
 
-        name = re.sub(r"([a-z])([A-Z])", r"\1 \2", name)
-        name = name.replace(".", " ").replace("_", " ")
+    def clean_name(self, name: str, is_folder: bool = True) -> str:
+        name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode("ascii")
 
-        return " ".join(name.split()).strip()
+        if is_folder:
+            for pattern in self.SCENE_PATTERNS:
+                name = re.sub(pattern, "", name, flags=re.IGNORECASE)
+
+            year_match = re.search(r"(?:^|[\._ ])(19|20)\d{2}(?:[\._ ]|$)", name)
+            if year_match:
+                year_str = year_match.group()
+                temp_clean = name.replace(year_str, " ").replace(".", " ").replace("_", " ")
+                remaining_words = [w for w in temp_clean.split() if len(w) > 1]
+
+                # If we have 2+ words (Resident Evil 4), the year is metadata.
+                # If 1 word (DOOM), the year is Identity.
+                if len(remaining_words) >= 2:
+                    name = name.replace(year_str, " ")
+
+        for char in [".", "_", "-", "[", "]"]:
+            name = name.replace(char, " ")
+
+        name = re.sub(r"([a-z])([A-Z])(?=[a-z])", r"\1 \2", name)
+        name = name.lower()
+
+        name = re.sub(r"[^a-z0-9\s:]", "", name)
+
+        result = " ".join(name.split()).strip()
+
+        # Collapse spaced letters (s t a l k e r -> stalker)
+        result = re.sub(r"\b([a-z])\s(?=[a-z]\b)", r"\1", result)
+
+        return result
 
     def calculate_confidence(self, target: str, candidate: str) -> float:
-        clean_local = self.clean_name(target).lower()
-        clean_steam = self.clean_name(candidate).lower()
+        clean_local = self.clean_name(target, is_folder=True)
+        clean_steam = self.clean_name(candidate, is_folder=False)
 
-        t = re.sub(r"[^a-z0-9]", "", clean_local)
-        c = re.sub(r"[^a-z0-9]", "", clean_steam)
+        t_raw = re.sub(r"[^a-z0-9]", "", clean_local)
+        c_raw = re.sub(r"[^a-z0-9]", "", clean_steam)
 
-        if not t or not c:
+        if not t_raw or not c_raw:
             return 0.0
 
-        if t == c:
+        if t_raw == c_raw:
             return 1.0
 
-        ratio = SequenceMatcher(None, t, c).ratio()
+        ratio = SequenceMatcher(None, t_raw, c_raw).ratio()
 
-        tokens_t = set(clean_local.split())
-        tokens_c = set(clean_steam.split())
+        tokens_t = set(clean_local.replace(":", "").split())
+        tokens_c = set(clean_steam.replace(":", "").split())
+
+        core_t = clean_local
+        for kw in self.EDITION_KEYWORDS:
+            if re.search(rf"\b{re.escape(kw)}\b", core_t):
+                core_t = re.split(rf"\b{re.escape(kw)}\b", core_t)[0].strip()
+                break
+
+        core_t_raw = re.sub(r"[^a-z0-9]", "", core_t)
+        if core_t_raw == c_raw and len(core_t_raw) > 3:
+            ratio = max(ratio, 0.90)
 
         if tokens_t & tokens_c:
             ratio = max(ratio, 0.75)
@@ -65,22 +121,16 @@ class NameMatcher:
         if numbers_t and numbers_t == numbers_c:
             ratio += 0.05
 
-        if ":" in clean_steam:
-            ratio += 0.08
-
-        if tokens_t.issubset(tokens_c) or tokens_c.issubset(tokens_t):
-            ratio = max(ratio, 0.8)
+        is_subset = tokens_t.issubset(tokens_c) or tokens_c.issubset(tokens_t)
+        if is_subset and len(tokens_t) >= 2:
+            ratio = max(ratio, 0.85)
 
         extra_tokens = tokens_c - tokens_t
         bad_extras = extra_tokens & self.BAD_TOKENS
         if bad_extras:
-            ratio -= 0.2 * len(bad_extras)
+            ratio -= 0.25 * len(bad_extras)
 
-        if extra_tokens:
-            ratio -= 0.02 * len(extra_tokens)
-
-        if t != c:
-            length_diff = abs(len(t) - len(c))
-            ratio -= 0.02 * length_diff
+        length_diff = abs(len(t_raw) - len(c_raw))
+        ratio -= 0.01 * length_diff
 
         return round(max(0.0, min(1.0, ratio)), 2)

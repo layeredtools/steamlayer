@@ -5,7 +5,8 @@ import pathlib
 import shutil
 
 from steamlayer.emulators import Emulator, EmulatorConfig
-from steamlayer.fileops import SteamAPIDll
+from steamlayer.fileops import BackedUpFile, SteamAPIDll
+from steamlayer.steamstub import SteamlessCLI, SteamStubScanner
 
 log = logging.getLogger("steamlayer." + __name__)
 
@@ -48,21 +49,95 @@ class Game:
 
 
 class GamePatcher:
-    def __init__(self, game: Game, emulator: Emulator, *, config: EmulatorConfig, dry_run: bool = False) -> None:
+    def __init__(
+        self,
+        game: Game,
+        emulator: Emulator,
+        *,
+        config: EmulatorConfig,
+        dry_run: bool = False,
+        unpack: bool = False,
+    ) -> None:
         self.game = game
         self.config = config
         self.emulator = emulator
         self.dry_run = dry_run
+        self.unpack = unpack
         self.vault_root = self.game.path / VAULT_NAME
+        self._stub_scanner = SteamStubScanner()
+
+    def _handle_steamstub(self, dlls: list[SteamAPIDll]) -> None:
+        scanned_dirs: set[pathlib.Path] = set()
+        wrapped: dict[pathlib.Path, str] = {}
+
+        for dll in dlls:
+            directory = dll.file.parent
+            if directory in scanned_dirs:
+                continue
+            scanned_dirs.add(directory)
+
+            results = self._stub_scanner.scan_directory(directory)
+            for exe_path, result in results.items():
+                wrapped[exe_path] = result.variant or "unknown"
+
+        if not wrapped:
+            log.debug("SteamStub scan: no wrapped executables found.")
+            return
+
+        if not self.unpack:
+            log.warning("─" * 60)
+            log.warning("⚠  STEAMSTUB (SteamDRM) DETECTED")
+            log.warning(
+                "\nOne or more executables are wrapped with SteamStub. Replacing the DLL might not be enough."
+            )
+            for exe, variant in sorted(wrapped.items()):
+                rel = exe.relative_to(self.game.path) if exe.is_relative_to(self.game.path) else exe
+                log.warning(f"  {rel}  [{variant}]")
+
+            log.warning("\nRECOMMENDED: Run with '--unpack' to automate DRM removal via Steamless.")
+            log.warning("─" * 60)
+            return
+
+        dry_prefix = "[DRY RUN] " if self.dry_run else ""
+        log.info(f"{dry_prefix}SteamStub detected on {len(wrapped)} file(s). Proceeding with Steamless...")
+
+        steamless = SteamlessCLI()
+        if not steamless.is_available():
+            if self.dry_run:
+                log.warning(f"{dry_prefix}Steamless CLI not found in vendors. Real run would fail here.")
+            else:
+                log.error("Steamless CLI not found. Cannot proceed with automatic unpacking.")
+                raise FileNotFoundError("Steamless CLI missing.")
+
+        for exe_path, variant in sorted(wrapped.items()):
+            rel = exe_path.relative_to(self.game.path) if exe_path.is_relative_to(self.game.path) else exe_path
+
+            if self.dry_run:
+                log.info(f"{dry_prefix}Would unpack: {rel} ({variant})")
+                continue
+
+            try:
+                log.info(f"Unpacking {rel}...")
+                exe_bkp = BackedUpFile(exe_path)
+                exe_bkp.set_backup_destination(self.vault_root / rel)
+                exe_bkp.backup()
+
+                unpacked_exe = steamless.unpack(exe_path)
+                unpacked_exe.replace(exe_path)
+
+                steamless_orig = exe_path.with_name(f"{exe_path.name}.original")
+                steamless_orig.unlink(missing_ok=True)
+            except Exception as e:
+                log.error(f"Failed to unpack {rel}: {e}")
+                raise
 
     def run(self) -> None:
         if self.vault_root.exists() and any(self.vault_root.iterdir()):
-            log.warning("---")
-            log.warning("!!! PREVIOUS BACKUP DETECTED !!!")
-            log.warning(f"A vault already exists at: {self.vault_root}")
-            log.warning("The patcher will proceed, but it will NOT overwrite existing backups.")
-            log.warning("This ensures your original retail DLLs are never replaced by patched ones.")
-            log.warning("---")
+            log.warning(
+                "Previous backup detected... "
+                f"A vault already exists at: {self.vault_root}\n"
+                "The patcher will proceed, but it will NOT overwrite existing backups."
+            )
 
         dry_prefix = "[DRY RUN] " if self.dry_run else ""
         game_name = self.game.path.name
@@ -77,6 +152,8 @@ class GamePatcher:
         dlls = self.game.find_steam_dlls()
         if not dlls:
             raise FileNotFoundError("No Steam API DLLs found in game directory.")
+
+        self._handle_steamstub(dlls)
 
         for dll in dlls:
             relative_path = dll.file.relative_to(self.game.path)
@@ -136,40 +213,45 @@ class GameRestorer:
             log.error(f"No vault found at '{self.vault_root}'. Cannot restore.")
             return
 
-        all_vaulted = list(self.vault_root.rglob("steam_api*.dll"))
+        all_vaulted = [p for p in self.vault_root.rglob("*") if p.is_file()]
         if not all_vaulted:
-            log.error("Vault exists but contains no DLLs to restore.")
+            log.error("Vault exists but contains no files to restore.")
             return
 
-        restored_successfully: list[tuple[SteamAPIDll, pathlib.Path]] = []
+        restored_successfully: list[tuple[BackedUpFile, pathlib.Path]] = []
         restoration_failed = False
 
         for vaulted_path in all_vaulted:
             rel = vaulted_path.relative_to(self.vault_root)
             original_dest = self.game.path / rel
 
-            dll = SteamAPIDll(original_dest)
-            dll.set_backup_destination(vaulted_path)
+            bkp_file = BackedUpFile(original_dest)
+            bkp_file.set_backup_destination(vaulted_path)
 
             if self.dry_run:
                 log.info(f"[DRY RUN] Would restore {rel} to {original_dest}")
                 continue
 
             try:
-                log.info(f"Trying to restore {dll}...")
-                current_backup = dll.backup_path
+                log.info(f"Trying to restore {bkp_file.file.name}...")
+                current_backup = bkp_file.backup_path
 
-                # delete_backup=False preserves the vault in case a later DLL fails,
+                # delete_backup=False preserves the vault in case a later file fails,
                 # so --restore can be re-run safely from a clean state.
-                dll.restore(delete_backup=False)
+                bkp_file.restore(delete_backup=False)
 
-                restored_successfully.append((dll, current_backup))
-                settings_dir = original_dest.parent / "steam_settings"
-                if settings_dir.exists():
-                    try:
-                        shutil.rmtree(settings_dir)
-                    except Exception as e:
-                        log.warning(f"Could not remove steam_settings in '{original_dest.parent}': {e}. Skipping...")
+                restored_successfully.append((bkp_file, current_backup))
+
+                # Cleanup configurations ONLY if this is a Steam DLL (not an unpacked .exe)
+                if "steam_api" in original_dest.name:
+                    settings_dir = original_dest.parent / "steam_settings"
+                    if settings_dir.exists():
+                        try:
+                            shutil.rmtree(settings_dir)
+                        except Exception as e:
+                            log.warning(
+                                f"Could not remove steam_settings in '{original_dest.parent}': {e}. Skipping..."
+                            )
 
             except Exception as e:
                 log.error(f"CRITICAL: Failed to restore {rel}: {e}")
@@ -179,7 +261,7 @@ class GameRestorer:
         if restoration_failed and not self.dry_run:
             log.error(
                 "Restoration incomplete. "
-                f"{len(restored_successfully)} DLL(s) were restored successfully before the failure. "
+                f"{len(restored_successfully)} file(s) were restored successfully before the failure. "
                 "The vault is preserved — you can re-run --restore to try again."
             )
             return

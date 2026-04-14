@@ -86,7 +86,8 @@ class Goldberg(Emulator):
         use_legacy_dlls = kwargs.get("use_legacy_dlls", False)  # type: bool
         if appid is None:
             log.warning(
-                "No AppID provided. Proceeding without 'steam_appid.txt'. The game will rely on Goldberg's fallback."
+                "No AppID provided. Proceeding without 'steam_appid.txt'. "
+                "The game will rely on Goldberg's fallback."
             )
 
         target_dirs = {p.parent for p in dll_paths}

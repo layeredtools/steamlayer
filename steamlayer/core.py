@@ -5,10 +5,15 @@ import logging
 import pathlib
 import time
 
-from steamlayer import __version__
+from steamlayer import (
+    TOOL_HOME,
+    VENDORS_PATH,
+    __version__,
+)
 from steamlayer.bootstrap import (
     GoldbergBootstrapper,
     SevenZipBootstrapper,
+    SteamlessBootstrapper,
     warn_about_defender_if_needed,
 )
 from steamlayer.discovery import DiscoveryFacade
@@ -26,9 +31,6 @@ from steamlayer.logging_utils import configure_logging
 
 log = logging.getLogger("steamlayer.core")
 
-TOOL_HOME = pathlib.Path.home() / ".steamlayer"
-VENDORS_PATH = TOOL_HOME / "vendors"
-
 
 def _run_discovery_and_patch(
     args: argparse.Namespace,
@@ -45,6 +47,7 @@ def _run_discovery_and_patch(
             strict=args.strict,
         )
         game.appid = result.appid
+        log.info(f"Found appid '{game.appid}'")
 
     if game.appid is not None:
         dlc_cache_path = args.cache_dir / f"dlcs_{game.appid}.json"
@@ -60,9 +63,28 @@ def _run_discovery_and_patch(
         emulator=emulator,
         config=config,
         dry_run=args.dry_run,
+        unpack=args.unpack,
     )
     emulator.validate()
     patcher.run()
+
+
+def _check_missing_vendors(*, args: argparse.Namespace) -> list[str]:
+    steamless = SteamlessBootstrapper(VENDORS_PATH / "steamless", http=None)
+    sevenzip = SevenZipBootstrapper(VENDORS_PATH / "7zip", http=None)
+    goldberg = GoldbergBootstrapper(VENDORS_PATH / "goldberg", http=None)
+
+    missing = []
+    if not sevenzip.is_available():
+        missing.append("7-Zip")
+
+    if not goldberg.is_available():
+        missing.append("Goldberg")
+
+    if args.unpack and not steamless.is_available():
+        missing.append("Steamless")
+
+    return missing
 
 
 def main() -> None:
@@ -111,6 +133,12 @@ def main() -> None:
         action="store_true",
         help="Skip the Windows Defender real-time protection warning.",
     )
+    parser.add_argument(
+        "-u",
+        "--unpack",
+        action="store_true",
+        help="Automatically run Steamless to unpack executables with SteamStub DRM.",
+    )
 
     args = parser.parse_args()
 
@@ -147,29 +175,26 @@ def main() -> None:
         restorer.run()
         return
 
-    sevenzip = SevenZipBootstrapper(VENDORS_PATH / "7zip", http=None)
-    goldberg = GoldbergBootstrapper(VENDORS_PATH / "goldberg", http=None)
     if args.no_network:
-        log.info("Network disabled. Using existing local dependencies.")
-        missing = []
-        if not sevenzip.is_available():
-            missing.append("7-Zip")
-
-        if not goldberg.is_available():
-            missing.append("Goldberg")
-
+        missing = _check_missing_vendors(args=args)
         if missing:
-            log.error("Missing required components with network disabled: " + ", ".join(missing))
+            log.error("The following dependencies are missing and cannot be downloaded in offline mode:")
+            for item in missing:
+                log.error(f" - {item}")
             raise SystemExit(1)
 
     with HTTPClient() as http:
         try:
             if not args.no_defender_check:
-                if not sevenzip.is_available() or not goldberg.is_available():
-                    warn_about_defender_if_needed(str(VENDORS_PATH))
+                warn_about_defender_if_needed(str(VENDORS_PATH))
 
-                SevenZipBootstrapper(VENDORS_PATH / "7zip", http).ensure(allow_network=not args.no_network)
-                GoldbergBootstrapper(VENDORS_PATH / "goldberg", http).ensure(allow_network=not args.no_network)
+            if args.unpack:
+                SteamlessBootstrapper(VENDORS_PATH / "steamless", http=http).ensure(
+                    allow_network=not args.no_network
+                )
+            SevenZipBootstrapper(VENDORS_PATH / "7zip", http).ensure(allow_network=not args.no_network)
+            GoldbergBootstrapper(VENDORS_PATH / "goldberg", http).ensure(allow_network=not args.no_network)
+
         except RuntimeError as e:
             log.error(str(e))
             raise SystemExit(1)

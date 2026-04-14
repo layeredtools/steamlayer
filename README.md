@@ -17,8 +17,7 @@ Finds the AppID, grabs DLC info, swaps the DLLs, backs up the originals. One com
 
 You point it at a game folder. It figures out the AppID (or you tell it), pulls DLC metadata from Steam, backs up the original `steam_api.dll` files, drops in Goldberg's replacements, and writes the config. If something breaks or you just want your files back, `--restore` undoes everything cleanly.
 
-7-Zip and Goldberg are downloaded automatically on first run — you don't install them manually.
-
+7-Zip, Goldberg, and Steamless are downloaded automatically on first run — you don't install them manually.
 
 > [!WARNING]
 > steamlayer is under active development and not yet production-ready. Expect rough edges, and always keep `--restore` in mind.
@@ -36,7 +35,7 @@ Or with pipx if you want it isolated:
 pipx install steamlayer
 ```
 
-**Requirements:** 
+**Requirements:**
 * Python 3.13+
 * Windows
 * 7-Zip somewhere on your system for the very first run (after that steamlayer manages its own copy).
@@ -49,7 +48,7 @@ pipx install steamlayer
 steamlayer "C:\Games\Portal 2"
 ```
 
-That's the common case. It'll do everything automatically. If the AppID detection gets it wrong, pass it explicitly:
+That's the common case. It'll do everything automatically. If AppID detection gets it wrong, pass it explicitly:
 
 ```bash
 steamlayer "C:\Games\Portal 2" --appid 620
@@ -59,6 +58,12 @@ Not sure what it's going to do? Run with `--dry-run` first:
 
 ```bash
 steamlayer "C:\Games\Portal 2" --dry-run
+```
+
+Game uses SteamStub DRM? Let steamlayer strip it automatically:
+
+```bash
+steamlayer "C:\Games\Portal 2" --unpack
 ```
 
 Something broke, want your files back:
@@ -75,9 +80,10 @@ steamlayer "C:\Games\Portal 2" --restore
 | `-d`, `--dry-run` | Show what would happen, don't touch anything |
 | `-n`, `--no-network` | Use cached data only, no requests |
 | `-r`, `--restore` | Put the original DLLs back and clean up |
+| `-u`, `--unpack` | Auto-strip SteamStub DRM via Steamless before patching |
 | `-y`, `--yolo` | Accept lower-confidence AppID matches |
 | `-v` / `-vv` | More output (`-v` = info, `-vv` = debug) |
-| `--cache-dir <path>` | Override the cache location |
+| `--cache-dir <path>` | Override the cache location (default: `~/.steamlayer/.cache`) |
 | `--no-defender-check` | Skip the Defender warning |
 | `--version` | Print the version and exit |
 
@@ -85,13 +91,15 @@ steamlayer "C:\Games\Portal 2" --restore
 
 ## How it works
 
-**AppID detection** — checks for `steam_appid.txt` or `.acf` manifest files in the game folder first. If nothing's there, it searches a locally-cached community index, then falls back to the Steam store API. If two results look equally likely, it asks you to pick.
+**AppID detection** — checks for `steam_appid.txt` or `.acf` manifest files in the game folder first. If nothing's there, it searches a locally-cached community index, then falls back to the Steam store API. If two results look equally likely, it asks you to pick. Pass `--yolo` to lower the confidence threshold (useful for sequels or non-standard folder names).
 
 **DLC metadata** — fetches the DLC list from the Steam API and resolves names using the same community index. Anything missing from the index gets looked up individually. Results are cached for a week so repeat runs are fast.
 
+**SteamStub detection** — before patching, steamlayer scans every `.exe` in each DLL's directory for SteamStub DRM. It recognises v1.x (via `SteamDRMP.dll` import) and v3.x (via the `0xCAFEDEAD` header magic in the `.bind` section). If wrapped executables are found and `--unpack` wasn't passed, it warns you. With `--unpack`, Steamless strips the DRM automatically and the original executable is vaulted alongside the DLLs.
+
 **Patching** — finds every `steam_api.dll` and `steam_api64.dll` in the game tree, vaults the originals to `<game>/__original_files__/`, and copies in the right Goldberg DLL (x32 or x64). Config files go in a `steam_settings/` folder next to each DLL, plus a `steam_appid.txt` at the game root.
 
-**Restore** — moves the vaulted DLLs back, deletes the `steam_settings/` directories, cleans up loose config files, and removes the vault once it's empty. Safe to re-run if it fails partway through.
+**Restore** — moves the vaulted DLLs (and any vaulted executables) back, deletes the `steam_settings/` directories, cleans up loose config files, and removes the vault once it's empty. Safe to re-run if it fails partway through.
 
 ---
 
@@ -105,7 +113,7 @@ If real-time protection is on, add a folder exclusion before running:
 C:\Users\<you>\.steamlayer\vendors
 ```
 
-Swapping Steam DLLs looks suspicious enough that Defender will sometimes quarantine Goldberg's files mid-download. The exclusion keeps that from happening. It only covers this one folder, nothing else on your system.
+Swapping Steam DLLs looks suspicious enough that Defender will sometimes quarantine Goldberg's or Steamless's files mid-download. The exclusion keeps that from happening. It only covers this one folder, nothing else on your system.
 
 ---
 
@@ -116,6 +124,8 @@ Swapping Steam DLLs looks suspicious enough that Defender will sometimes quarant
 **Wrong game detected** — use `--appid`. You can find the right ID on [SteamDB](https://www.steamdb.info) or in the store URL.
 
 **Defender quarantined something mid-install** — add the exclusion above and re-run. steamlayer will re-download and retry cleanly.
+
+**SteamStub warning at runtime** — the game executable is wrapped with SteamDRM. Re-run with `--unpack` to strip it automatically, or unpack manually with [Steamless](https://github.com/atom0s/Steamless) first.
 
 **Game broken after patching** — run `--restore`. If that also fails partway through, run it again — it picks up where it left off.
 

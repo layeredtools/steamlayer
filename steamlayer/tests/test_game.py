@@ -161,12 +161,11 @@ class TestGamePatcher:
         with caplog.at_level(logging.WARNING):
             patcher.run()
 
-        assert "PREVIOUS BACKUP DETECTED" in caplog.text
+        assert "Previous backup detected" in caplog.text
 
     def test_existing_backup_is_not_overwritten(self, tmp_game, vendors):
         dll_path = make_dll(tmp_game, "steam_api64.dll")
 
-        # First patch
         game = Game(path=tmp_game, appid=620)
         emu = make_fake_emulator(vendors)
         config = MagicMock(spec=EmulatorConfig)
@@ -175,10 +174,8 @@ class TestGamePatcher:
         vault_file = tmp_game / VAULT_NAME / "steam_api64.dll"
         original_vault_bytes = vault_file.read_bytes()
 
-        # Modify the current DLL (simulate someone else writing to it)
         dll_path.write_bytes(b"tampered")
 
-        # Second patch — vault should not change
         emu2 = make_fake_emulator(vendors)
         GamePatcher(game=game, emulator=emu2, config=config).run()
 
@@ -263,4 +260,4 @@ class TestGameRestorer:
         with caplog.at_level(logging.ERROR):
             GameRestorer(game=game, emulator=emu).run()
 
-        assert "no DLLs to restore" in caplog.text
+        assert "no files to restore" in caplog.text

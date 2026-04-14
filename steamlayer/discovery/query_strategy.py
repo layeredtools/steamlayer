@@ -1,16 +1,22 @@
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from steamlayer.discovery.matcher import NameMatcher
 
 
 class QueryStrategy:
     """
     Strategy:
-    1. Try full name (with modifiers)
-    2. Remove modifiers (replacement)
-    3. Remove irrelevant words
-    4. Remove captions
-    5. Progressively simplify
+    1. Try full name (normalized)
+    2. Split by subtitle (captions)
+    3. Remove version modifiers
+    4. Remove common stopwords
+    5. Simplify to first two words
+    6. Simplify to first word
+    7. Remove standalone numbers
     """
 
     MODIFIERS = {
@@ -20,16 +26,14 @@ class QueryStrategy:
         "edition",
         "complete",
         "bundle",
+        "deluxe",
+        "ultimate",
     }
 
     STOPWORDS = {"the", "a", "an"}
 
-    def _normalize(self, name: str) -> str:
-        name = re.sub(r"([a-z])([A-Z])", r"\1 \2", name)
-        name = name.lower()
-        name = re.sub(r"[^a-z0-9\s:]", "", name)
-        name = " ".join(name.split())
-        return name.strip()
+    def __init__(self, matcher: NameMatcher) -> None:
+        self.matcher = matcher
 
     def _remove_stopwords(self, name: str) -> str:
         words = name.split()
@@ -44,29 +48,40 @@ class QueryStrategy:
     def generate(self, name: str) -> list[str]:
         queries: list[str] = []
 
-        base = self._normalize(name)
-        words = base.split()
+        raw_base = self.matcher.clean_name(name)
 
-        queries.append(base)
+        queries.append(name)
+        queries.append(raw_base)
 
-        no_modifiers = self._remove_modifiers(base)
-        if no_modifiers and no_modifiers != base:
+        if ":" in raw_base:
+            main_part = raw_base.split(":")[0].strip()
+            if main_part:
+                queries.append(main_part)
+
+        clean_base = raw_base.replace(":", " ")
+        clean_base = " ".join(clean_base.split())
+        words = clean_base.split()
+
+        no_modifiers = self._remove_modifiers(clean_base)
+        if no_modifiers and no_modifiers != clean_base:
             queries.append(no_modifiers)
 
         no_stop = self._remove_stopwords(no_modifiers)
         if no_stop and no_stop != no_modifiers:
             queries.append(no_stop)
 
-        if ":" in base:
-            main = base.split(":")[0].strip()
-            if main:
-                queries.append(main)
-
         if len(words) >= 2:
-            queries.append(" ".join(words[:2]))
+            if len(words) >= 3 and (words[2].isdigit() or len(words[2]) <= 2):
+                queries.append(" ".join(words[:3]))
+            else:
+                queries.append(" ".join(words[:2]))
 
         if words:
-            queries.append(words[0])
+            first = words[0]
+            if first not in self.STOPWORDS:
+                queries.append(first)
+            elif len(words) >= 2:
+                queries.append(words[1])
 
         no_numbers = re.sub(r"\b\d+\b", "", no_modifiers).strip()
         if no_numbers and no_numbers != no_modifiers:

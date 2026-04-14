@@ -18,8 +18,16 @@ class FakeIO:
         return next(self._responses)
 
 
-def make_candidates(names: list[str]) -> list[tuple[float, dict]]:
-    return [(round(1.0 - i * 0.05, 2), {"id": str(100 + i), "name": name}) for i, name in enumerate(names)]
+def make_candidates(names: list[str]) -> list[DiscoveryResult]:
+    return [
+        DiscoveryResult(
+            appid=100 + i,
+            game_name=name,
+            confidence=round(1.0 - i * 0.05, 2),
+            source=DiscoverySource.WEB,
+        )
+        for i, name in enumerate(names)
+    ]
 
 
 class TestPromptAmbiguousMatch:

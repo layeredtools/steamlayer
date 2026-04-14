@@ -90,7 +90,7 @@ def make_resolver(*, local=None, repo=None, web=None, matcher=None, query_strate
     from steamlayer.discovery.web import SteamWebClient
 
     return AppIDResolver(
-        query_strategy=query_strategy or QueryStrategy(),
+        query_strategy=query_strategy or QueryStrategy(NameMatcher()),
         local=local or MagicMock(spec=LocalDiscovery),
         matcher=matcher or NameMatcher(),
         repo=repo or MagicMock(spec=AppIndexRepository),
@@ -233,20 +233,20 @@ class TestAppIDResolverWeb:
 class TestDecisionPolicy:
     def test_ambiguous_when_scores_close(self):
         policy = DecisionPolicy()
-        assert policy.is_ambiguous(0.85, 0.78) is True
+        assert policy.is_ambiguous(0.85, 0.78, "", "") is True
 
     def test_not_ambiguous_when_scores_far_apart(self):
         policy = DecisionPolicy()
-        assert policy.is_ambiguous(0.95, 0.60) is False
+        assert policy.is_ambiguous(0.95, 0.60, "", "") is False
 
     def test_not_ambiguous_when_best_below_min(self):
         policy = DecisionPolicy()
-        assert policy.is_ambiguous(0.3, 0.25) is False
+        assert policy.is_ambiguous(0.3, 0.25, "", "") is False
 
     def test_should_accept_strict(self):
         policy = DecisionPolicy()
-        assert policy.should_accept(0.65, strict=True) is True
-        assert policy.should_accept(0.55, strict=True) is False
+        assert policy.should_accept(0.85, strict=True) is True
+        assert policy.should_accept(0.84, strict=True) is False
 
     def test_should_accept_yolo(self):
         policy = DecisionPolicy()

@@ -5,6 +5,7 @@ import pathlib
 import re
 import shutil
 import subprocess
+import tempfile
 
 from .base import Bootstrapper
 
@@ -12,9 +13,12 @@ log = logging.getLogger("steamlayer.bootstrap.7zip")
 
 DOWNLOAD_PAGE = "https://www.7-zip.org/download.html"
 EXTRA_URL_TEMPLATE = "https://www.7-zip.org/a/7z{version}-extra.7z"
+FALLBACK_VERSION = "2409"
 
 
 class SevenZipBootstrapper(Bootstrapper):
+    _name = "7z"
+
     def _is_installed(self) -> bool:
         return (self._path / "7z.exe").exists()
 
@@ -35,8 +39,8 @@ class SevenZipBootstrapper(Bootstrapper):
             return version
 
         except Exception:
-            log.warning("Could not fetch latest 7-Zip version.")
-            return None
+            log.warning("Could not determine latest 7-Zip version, falling back to %s.", FALLBACK_VERSION)
+            return FALLBACK_VERSION
 
     def _find_system_7z(self) -> str | None:
         candidates = [
@@ -54,9 +58,11 @@ class SevenZipBootstrapper(Bootstrapper):
     def _install(self) -> None:
         system_7z = self._find_system_7z()
         if not system_7z:
-            raise RuntimeError("Cannot bootstrap 7-Zip: no existing 7z found in PATH or standard install locations.")
+            raise RuntimeError(
+                "Cannot bootstrap 7-Zip: no existing 7z found in PATH or standard install locations."
+            )
 
-        latest = self._get_latest_version()
+        latest = self._cached_latest or self._get_latest_version()
         if not latest:
             raise RuntimeError("Could not determine latest 7-Zip version.")
 
@@ -65,7 +71,7 @@ class SevenZipBootstrapper(Bootstrapper):
 
         # Can't use _extract_archive here since 7z isn't bootstrapped yet —
         # we use the system 7z directly for this one-time extraction.
-        with __import__("tempfile").TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory() as tmp:
             tmp_path = pathlib.Path(tmp)
             archive = tmp_path / "7zip.7z"
             archive.write_bytes(data)

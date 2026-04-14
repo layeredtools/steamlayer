@@ -1,29 +1,13 @@
 from __future__ import annotations
 
-import json
 import logging
-import pathlib
 import subprocess
+
+from steamlayer import state
 
 log = logging.getLogger("steamlayer.bootstrap.defender")
 
-STATE_PATH = pathlib.Path.home() / ".steamlayer" / "state.json"
 MAX_WARNINGS = 3
-
-
-def _read_state() -> dict:
-    try:
-        return json.loads(STATE_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
-
-def _write_state(state: dict) -> None:
-    try:
-        STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
-    except Exception:
-        log.debug("Could not write state file.")
 
 
 def is_realtime_protection_on() -> bool:
@@ -75,8 +59,9 @@ def warn_about_defender_if_needed(vendors_path: str) -> None:
     if check_defender_exclusion(vendors_path):
         return
 
-    state = _read_state()
-    shown = state.get("defender_warning_count", 0)
+    section = "defender"
+    shown = state.get(section, "warning_count", 0)
+
     if shown >= MAX_WARNINGS:
         log.debug("Defender warning suppressed (shown %d times).", shown)
         return
@@ -85,7 +70,7 @@ def warn_about_defender_if_needed(vendors_path: str) -> None:
         "\n"
         "┌─ Windows Defender Warning ──────────────────────────────────────────┐\n"
         "│                                                                     │\n"
-        "│  Real-time protection is ON. If you haven't already, add an        │\n"
+        "│  Real-time protection is ON. If you haven't already, add an         │\n"
         "│  exclusion for this folder to avoid a mid-install quarantine:       │\n"
         f"│  {vendors_path:<68}│\n"
         "│                                                                     │\n"
@@ -95,5 +80,4 @@ def warn_about_defender_if_needed(vendors_path: str) -> None:
         "└─────────────────────────────────────────────────────────────────────┘\n"
     )
 
-    state["defender_warning_count"] = shown + 1
-    _write_state(state)
+    state.update_section(section, warning_count=shown + 1)

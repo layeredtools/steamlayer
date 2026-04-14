@@ -23,7 +23,7 @@ dev = [
 ]
 
 [tool.ruff]
-line-length = 120
+line-length = 115
 target-version = "py313"
 fix = true
 

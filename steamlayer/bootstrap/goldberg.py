@@ -20,6 +20,8 @@ _EXTRACT_TARGETS = [
 
 
 class GoldbergBootstrapper(Bootstrapper):
+    _name = "goldberg"
+
     def _is_installed(self) -> bool:
         x32 = self._path / "regular" / "x32" / "steam_api.dll"
         x64 = self._path / "regular" / "x64" / "steam_api64.dll"
@@ -28,6 +30,7 @@ class GoldbergBootstrapper(Bootstrapper):
     def _get_latest_version(self) -> str | None:
         if not self._http:
             raise RuntimeError("Network access required but HTTP client is not available.")
+
         try:
             data: dict[str, str] = self._http.get(RELEASES_API).json()
             return data.get("tag_name")
@@ -36,7 +39,8 @@ class GoldbergBootstrapper(Bootstrapper):
             return None
 
     def _install(self) -> None:
-        latest = self._get_latest_version()
+        latest = self._cached_latest or self._get_latest_version()
+
         data = self._download(RELEASE_URL)
         self._reset_dir()
 
@@ -54,4 +58,4 @@ class GoldbergBootstrapper(Bootstrapper):
 
         if latest:
             self._save_version(latest)
-        log.info(f"Goldberg {latest} installed.")
+        log.info(f"Goldberg {latest or '(unknown version)'} installed.")
