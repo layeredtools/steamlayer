@@ -10,10 +10,15 @@ dependencies = [
     "requests>=2.33.1",
 ]
 classifiers = [
+    "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3",
     "Operating System :: Microsoft :: Windows",
     "Environment :: Console",
 ]
+
+[project.urls]
+Source = "https://github.com/layeredtools/steamlayer"
+Issues = "https://github.com/layeredtools/steamlayer/issues"
 
 [dependency-groups]
 dev = [
