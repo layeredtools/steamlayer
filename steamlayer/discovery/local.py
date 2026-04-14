@@ -24,11 +24,11 @@ class LocalDiscovery:
 
                 if match:
                     appid = int(match.group())
-                    log.info(f"Found AppID {appid} in {f}")
+                    log.info(f"Found AppID {appid} in '{f}'")
                     return appid
 
             except OSError as e:
-                log.warning(f"Failed to read {f}: {e}")
+                log.warning(f"Failed to read '{f}': {e}")
                 continue
 
         parent = path.parent
@@ -43,7 +43,7 @@ class LocalDiscovery:
                         match = re.search(r'"appid"\s+"(\d+)"', content)
                         if match:
                             appid = int(match.group(1))
-                            log.info(f"Found AppID {appid} in {manifest.name}")
+                            log.info(f"Found AppID {appid} in '{manifest.name}'")
                             return appid
                 except Exception:
                     continue

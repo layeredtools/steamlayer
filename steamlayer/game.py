@@ -128,7 +128,7 @@ class GamePatcher:
         if self.vault_root.exists() and any(self.vault_root.iterdir()):
             log.warning(
                 "Previous backup detected... "
-                f"A vault already exists at: {self.vault_root}\n"
+                f"A vault already exists at: '{self.vault_root}'\n"
                 "The patcher will proceed, but it will NOT overwrite existing backups."
             )
 
@@ -158,14 +158,13 @@ class GamePatcher:
             if self.dry_run:
                 patched_dlls = dlls  # used for logging at the end
                 for dll in dlls:
-                    log.info(f"[DRY RUN] Would vault original to: {dll.backup_path}")
-                    log.info(f"[DRY RUN] Would overwrite: {dll.file}")
+                    log.info(f"[DRY RUN] Would vault original to: '{dll.backup_path}'")
+                    log.info(f"[DRY RUN] Would overwrite: '{dll.file}'")
 
                 for target_dir in {d.file.parent for d in dlls}:
                     log.info(
                         f"[DRY RUN] Would configure '{target_dir}' using the following flags: "
-                        f"(APPID={self.game.appid} DLLS={dlls} DLCS={self.game.dlcs}). "
-                        f"User-specific information would also be correctly written."
+                        f"(APPID={self.game.appid} DLLS={len(dlls)} DLCS={len(self.game.dlcs)}). "
                     )
 
             else:
@@ -182,13 +181,6 @@ class GamePatcher:
                         f"Config creation failed: {e}. The DLL patch was still applied "
                         "— the game may still work with default settings."
                     )
-
-            dlc_count = len(self.game.dlcs) if self.game.dlcs else 0
-            dll_count = len(patched_dlls)
-
-            log.info(
-                f"{dry_prefix}Patch completed successfully (AppID={appid}, DLLs={dll_count}, DLCs={dlc_count})"
-            )
 
 
 class GameRestorer:
@@ -217,7 +209,6 @@ class GameRestorer:
 
         restored_successfully: list[tuple[BackedUpFile, pathlib.Path]] = []
         restoration_failed = False
-
         for vaulted_path in all_vaulted:
             rel = vaulted_path.relative_to(self.vault_root)
             original_dest = self.game.path / rel
