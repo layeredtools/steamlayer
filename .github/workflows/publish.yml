@@ -9,6 +9,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     environment: pypi
+    needs: ci
     permissions:
       id-token: write
 
@@ -27,3 +28,6 @@ jobs:
 
       - name: Publish
         run: uv publish
+
+  ci:
+    uses: ./.github/workflows/ci.yml
