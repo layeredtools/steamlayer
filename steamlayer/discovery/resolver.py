@@ -152,7 +152,6 @@ class AppIDResolver:
             log.warning("AppID discovery failed. Network is disabled.")
             return DiscoveryResult(source=DiscoverySource.NONE)
 
-        log.info(f"Searching Steam for: '{original_name}'...")
         with spinner(f"Searching steam for {original_name}..."):
             queries = self.query_strategy.generate(original_name)
             for query in queries:
