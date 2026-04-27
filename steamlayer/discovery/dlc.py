@@ -22,7 +22,7 @@ class DLCService:
         self.repo = repo
         self.web = web
 
-    def _read_cache(self, cache_path: pathlib.Path) -> dict[int, str]:
+    def _read_cache(self, cache_path: pathlib.Path) -> dict[str | int, str]:
         if not cache_path.exists():
             return {}
 
@@ -43,7 +43,7 @@ class DLCService:
 
         return {}
 
-    def _write_cache(self, cache_path: pathlib.Path, dlcs: dict[int, str]) -> None:
+    def _write_cache(self, cache_path: pathlib.Path, dlcs: dict[int | str, str]) -> None:
         try:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             payload = {
@@ -61,7 +61,7 @@ class DLCService:
         *,
         cache_path: pathlib.Path | None = None,
         allow_network: bool = True,
-    ) -> dict[int, str]:
+    ) -> dict[str | int, str]:
         log.info(f"Fetching DLC metadata for AppID {appid}...")
 
         if cache_path and cache_path.exists():
@@ -88,7 +88,7 @@ class DLCService:
 
             dlc_index = self.repo.get_dlc_index()
 
-            final_dlcs: dict[int, str] = {}
+            final_dlcs: dict[str | int, str] = {}
             missing_ids: list[int] = []
             for d_id in dlc_ids:
                 d_id_int = int(d_id)

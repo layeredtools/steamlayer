@@ -40,23 +40,21 @@ def test_substring_bonus_executive_edition(matcher: NameMatcher):
 
 
 def test_fetch_dlcs_failure_handling(dlc_service: DLCService):
-    dlc_service.web.get_app_details = MagicMock(side_effect=Exception("Steam is down"))
-    dlc_service.repo.get_dlc_index = MagicMock(return_value={})
+    dlc_service.web.get_app_details.side_effect = Exception("Steam is down")  # type: ignore
+    dlc_service.repo.get_dlc_index.return_value = {}  # type: ignore
 
     dlcs = dlc_service.fetch(12345, allow_network=True)
     assert dlcs == {}
 
 
 def test_fetch_dlcs_individual_failure(dlc_service: DLCService):
-    dlc_service.web.get_app_details = MagicMock(
-        side_effect=[
-            {"12345": {"success": True, "data": {"dlc": [111, 222]}}},
-            Exception("Steam is down"),
-            {"222": {"success": True, "data": {"name": "Some DLC"}}},
-        ]
-    )
+    dlc_service.web.get_app_details.side_effect = [  # type: ignore
+        {"12345": {"success": True, "data": {"dlc": [111, 222]}}},
+        Exception("Steam is down"),
+        {"222": {"success": True, "data": {"name": "Some DLC"}}},
+    ]
 
-    dlc_service.repo.get_dlc_index = MagicMock(return_value={})
+    dlc_service.repo.get_dlc_index.return_value = {}  # type: ignore
     dlcs = dlc_service.fetch(12345, allow_network=True)
 
     assert dlcs[111] == "DLC 111"  # fallback
