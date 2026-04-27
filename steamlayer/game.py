@@ -4,6 +4,7 @@ import logging
 import pathlib
 import shutil
 
+from steamlayer.config.writer import write_game_config
 from steamlayer.emulators import Emulator, EmulatorConfig
 from steamlayer.fileops import BackedUpFile, SteamAPIDll
 from steamlayer.logging_utils import spinner
@@ -18,7 +19,7 @@ class Game:
     def __init__(self, path: pathlib.Path, appid: int | None = None) -> None:
         self.appid = appid
         self.path = path
-        self.dlcs: dict[int, str] = {}
+        self.dlcs: dict[str | int, str] = {}
 
     def find_steam_dlls(self) -> list[SteamAPIDll]:
         log.info("Searching for SteamAPI DLLs...")
@@ -31,20 +32,16 @@ class Game:
                 key = str(p).lower()
                 if key in seen:
                     continue
-
                 if VAULT_NAME in key:
                     continue
-
                 if p.name.lower() != name:
                     continue
-
                 found_paths.append(p)
                 seen.add(key)
 
         dlls = [SteamAPIDll(p) for p in found_paths]
         for dll in dlls:
             log.info(f"Found {dll}")
-
         log.info(f"Found {len(dlls)} SteamAPI DLLs in '{self.path}'.")
         return dlls
 
@@ -76,7 +73,6 @@ class GamePatcher:
             if directory in scanned_dirs:
                 continue
             scanned_dirs.add(directory)
-
             results = self._stub_scanner.scan_directory(directory)
             for exe_path, result in results.items():
                 wrapped[exe_path] = result.variant or "unknown"
@@ -93,8 +89,8 @@ class GamePatcher:
 
         dry_prefix = "[DRY RUN] " if self.dry_run else ""
         log.info(f"{dry_prefix}SteamStub detected on {len(wrapped)} file(s). Proceeding with Steamless...")
-
         steamless = SteamlessCLI()
+
         if not steamless.is_available():
             if self.dry_run:
                 log.warning(f"{dry_prefix}Steamless CLI not found in vendors. Real run would fail here.")
@@ -104,20 +100,16 @@ class GamePatcher:
 
         for exe_path, variant in sorted(wrapped.items()):
             rel = exe_path.relative_to(self.game.path) if exe_path.is_relative_to(self.game.path) else exe_path
-
             if self.dry_run:
                 log.info(f"{dry_prefix}Would unpack: {rel} ({variant})")
                 continue
-
             try:
                 log.info(f"Unpacking {rel}...")
                 exe_bkp = BackedUpFile(exe_path)
                 exe_bkp.set_backup_destination(self.vault_root / rel)
                 exe_bkp.backup()
-
                 unpacked_exe = steamless.unpack(exe_path)
                 unpacked_exe.replace(exe_path)
-
                 steamless_orig = exe_path.with_name(f"{exe_path.name}.original")
                 steamless_orig.unlink(missing_ok=True)
             except Exception as e:
@@ -135,7 +127,6 @@ class GamePatcher:
         dry_prefix = "[DRY RUN] " if self.dry_run else ""
         game_name = self.game.path.name
         appid = self.game.appid if self.game.appid is not None else "unknown"
-
         log.info(
             f"{dry_prefix}Starting patch "
             f"(Game='{game_name}', AppID={appid}, DryRun={self.dry_run}) "
@@ -156,19 +147,19 @@ class GamePatcher:
                 dll.set_backup_destination(vault_dest)
 
             if self.dry_run:
-                patched_dlls = dlls  # used for logging at the end
+                patched_dlls = dlls
                 for dll in dlls:
                     log.info(f"[DRY RUN] Would vault original to: '{dll.backup_path}'")
                     log.info(f"[DRY RUN] Would overwrite: '{dll.file}'")
-
                 for target_dir in {d.file.parent for d in dlls}:
                     log.info(
                         f"[DRY RUN] Would configure '{target_dir}' using the following flags: "
                         f"(APPID={self.game.appid} DLLS={len(dlls)} DLCS={len(self.game.dlcs)}). "
                     )
-
             else:
                 patched_dlls = self.emulator.patch_game(dlls=dlls)
+
+                config_created = True
                 try:
                     self.emulator.create_config_files(
                         config=self.config,
@@ -177,10 +168,23 @@ class GamePatcher:
                         dll_paths=[d.file for d in patched_dlls],
                     )
                 except Exception as e:
+                    config_created = False
                     log.error(
                         f"Config creation failed: {e}. The DLL patch was still applied "
                         "— the game may still work with default settings."
                     )
+
+                try:
+                    write_game_config(
+                        self.game.path,
+                        appid=self.game.appid,
+                        config=self.config,
+                        dlcs=self.game.dlcs,
+                        unpack=self.unpack,
+                        config_created=config_created,
+                    )
+                except Exception as e:
+                    log.warning(f"Failed to write local .steamlayer.toml: {e}")
 
 
 class GameRestorer:
@@ -188,7 +192,6 @@ class GameRestorer:
         self.game = game
         self.emulator = emulator
         self.dry_run = dry_run
-
         self.vault_root = self.game.path / VAULT_NAME
 
     def _is_vault_empty(self, path: pathlib.Path) -> bool:
@@ -209,10 +212,10 @@ class GameRestorer:
 
         restored_successfully: list[tuple[BackedUpFile, pathlib.Path]] = []
         restoration_failed = False
+
         for vaulted_path in all_vaulted:
             rel = vaulted_path.relative_to(self.vault_root)
             original_dest = self.game.path / rel
-
             bkp_file = BackedUpFile(original_dest)
             bkp_file.set_backup_destination(vaulted_path)
 
@@ -223,14 +226,9 @@ class GameRestorer:
             try:
                 log.info(f"Trying to restore {bkp_file.file.name}...")
                 current_backup = bkp_file.backup_path
-
-                # delete_backup=False preserves the vault in case a later file fails,
-                # so --restore can be re-run safely from a clean state.
                 bkp_file.restore(delete_backup=False)
-
                 restored_successfully.append((bkp_file, current_backup))
 
-                # Cleanup configurations ONLY if this is a Steam DLL (not an unpacked .exe)
                 if "steam_api" in original_dest.name:
                     settings_dir = original_dest.parent / "steam_settings"
                     if settings_dir.exists():
@@ -240,7 +238,6 @@ class GameRestorer:
                             log.warning(
                                 f"Could not remove steam_settings in '{original_dest.parent}': {e}. Skipping..."
                             )
-
             except Exception as e:
                 log.error(f"CRITICAL: Failed to restore {rel}: {e}")
                 restoration_failed = True

@@ -3,16 +3,27 @@ from __future__ import annotations
 import logging
 import pathlib
 import shutil
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
-from steamlayer.emulators import Emulator
-from steamlayer.emulators.goldberg.config import GoldbergConfig
+from steamlayer.emulators import Emulator, EmulatorConfig
 from steamlayer.fileops import SteamAPIDll
+
+if TYPE_CHECKING:
+    pass
 
 log = logging.getLogger("steamlayer." + __name__)
 
 
 class Goldberg(Emulator):
+    """
+    Goldberg Steam emulator wrapper.
+
+    Responsible for:
+    - Validating Goldberg binaries are present
+    - Patching game DLLs with Goldberg versions
+    - Writing configuration files (steam_settings/)
+    """
+
     def __init__(self, path: pathlib.Path) -> None:
         self._path = path
 
@@ -41,64 +52,106 @@ class Goldberg(Emulator):
 
     @property
     def config_files(self) -> list[str]:
-        return ["steam_appid.txt", "DLC.txt", "configs.user.ini", "configs.app.ini"]
+        """Config files written by this emulator — used by restore to clean up."""
+        return [
+            "steam_appid.txt",
+            "DLC.txt",
+            "configs.user.ini",
+            "configs.app.ini",
+        ]
 
     def validate(self) -> None:
+        """
+        Raise FileNotFoundError if the Goldberg binaries are missing.
+        """
         missing = [p for p in (self.x32, self.x64) if not p.exists()]
         if missing:
             raise FileNotFoundError(f"Goldberg binaries not found: {[str(p) for p in missing]}")
         log.info("Goldberg binaries validated.")
 
     def patch_game(self, *, dlls: list[SteamAPIDll]) -> list[SteamAPIDll]:
+        """
+        Replace game Steam DLLs with Goldberg versions.
+
+        For each DLL:
+        1. Back up the original to the vault.
+        2. Copy the matching Goldberg DLL (x32 or x64).
+
+        On failure mid-loop, rolls back all already-patched DLLs.
+
+        Returns:
+            List of successfully patched DLLs.
+        """
         log.info("Patching game DLLs...")
         patched: list[SteamAPIDll] = []
+
         try:
             for dll in dlls:
-                log.info(f"Patching {dll.file} ({dll.architecture})...")
+                log.info("Patching %s (%s)...", dll.file, dll.architecture)
                 dll.backup()
-
                 src = self.x64 if dll.architecture == "x64" else self.x32
                 shutil.copy2(src, dll.file)
                 patched.append(dll)
+                log.info("Patched %s successfully.", dll.file)
 
-                log.info(f"Patched {dll.file} successfully.")
         except Exception:
             log.warning("Patching failed mid-loop — rolling back...")
             for dll in patched:
                 try:
                     dll.restore(delete_backup=True)
-                    log.info(f"Rolled back {dll.file}.")
+                    log.info("Rolled back %s.", dll.file)
                 except Exception as e:
-                    log.error(f"Failed to roll back {dll.file}: {e}")
+                    log.error("Failed to roll back %s: %s", dll.file, e)
             raise
-        log.info(f"Patched {len(patched)} DLL(s) successfully.")
+
+        log.info("Patched %d DLL(s) successfully.", len(patched))
         return patched
 
     def create_config_files(
         self,
         *,
-        config: GoldbergConfig,  # type: ignore
+        config: EmulatorConfig,
         appid: int | None,
         game_path: pathlib.Path,
         dll_paths: list[pathlib.Path],
-        **kwargs: Any,  # mypy bitching
+        **kwargs: Any,
     ) -> None:
-        use_legacy_dlls = kwargs.get("use_legacy_dlls", False)  # type: bool
+        """
+        Write Goldberg configuration files next to each patched DLL.
+
+        For every directory that contains a patched DLL this creates a
+        ``steam_settings/`` folder and calls ``config.write()`` to populate it.
+        Whether to write ``steam_appid.txt`` and which DLC format to use are
+        both controlled by fields on *config* (``write_steam_appid`` and
+        ``legacy_dlcs`` respectively) — no extra kwargs needed.
+
+        Args:
+            config:     GoldbergConfig instance (account_name, language, dlcs, flags).
+            appid:      Steam AppID, or None if not discovered.
+            game_path:  Root directory of the game (steam_appid.txt goes here too).
+            dll_paths:  Paths to the patched DLL files.
+        """
+        from steamlayer.emulators.goldberg.config import GoldbergConfig
+
+        gb_config = cast(GoldbergConfig, config)
+
         if appid is None:
             log.warning(
-                "No AppID provided. Proceeding without 'steam_appid.txt'. "
+                "No AppID provided — proceeding without steam_appid.txt. "
                 "The game will rely on Goldberg's fallback."
             )
 
         target_dirs = {p.parent for p in dll_paths}
         for target_dir in target_dirs:
             steam_settings_dir = target_dir / self.settings_dir_name
-            config.write(steam_settings_dir, legacy_dlcs=use_legacy_dlls)
-            if appid is not None:
-                (steam_settings_dir / "steam_appid.txt").write_text(str(appid), encoding="utf-8")
-                log.info(f"Written steam_appid.txt to {steam_settings_dir}.")
-            log.info(f"Configured folder: {target_dir}")
+            gb_config.write(steam_settings_dir)
 
-        if appid is not None:
+            if appid is not None and gb_config.write_steam_appid:
+                (steam_settings_dir / "steam_appid.txt").write_text(str(appid), encoding="utf-8")
+                log.info("Written steam_appid.txt to %s.", steam_settings_dir)
+
+            log.info("Configured folder: %s", target_dir)
+
+        if appid is not None and gb_config.write_steam_appid:
             (game_path / "steam_appid.txt").write_text(str(appid), encoding="utf-8")
-            log.info(f"Written steam_appid.txt to game root '{game_path}'.")
+            log.info("Written steam_appid.txt to game root '%s'.", game_path)

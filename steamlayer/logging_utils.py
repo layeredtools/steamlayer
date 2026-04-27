@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Generator
 from contextlib import contextmanager
 
 from rich.console import Console
 from rich.logging import RichHandler
-from rich.status import Status
 
 console = Console(stderr=True)
 
@@ -16,7 +14,7 @@ def success(message: str) -> None:
 
 
 @contextmanager
-def spinner(message: str) -> Generator[Status, None, None]:
+def spinner(message: str):
     with console.status(f"[dim]{message}[/dim]") as status:
         yield status
 

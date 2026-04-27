@@ -1,6 +1,6 @@
 [project]
 name = "steamlayer"
-version = "0.1.1"
+version = "0.1.2"
 description = "Patch Steam games to use the Goldberg emulator — replaces Steam API DLLs, writes DLC config, and restores originals on demand."
 readme = "README.md"
 license = "MIT"
@@ -9,6 +9,7 @@ requires-python = ">=3.13"
 dependencies = [
     "requests>=2.33.1",
     "rich>=15.0.0",
+    "tomli-w>=1.2.0",
 ]
 classifiers = [
     "Development Status :: 3 - Alpha",
