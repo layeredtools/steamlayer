@@ -2,18 +2,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from contextlib import asynccontextmanager
 
-from steamlayer_backend.routers import dlcs, patch
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
 
-from steamlayer_backend.routers import settings
-from steamlayer_backend.ws.progress import router as ws_router
+from steamlayer_backend.routers import dlcs, patch, resolve, settings
 from steamlayer_backend.state import state
-from steamlayer_backend.routers import resolve
+from steamlayer_backend.ws.progress import router as ws_router
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("steamlayer_backend")
@@ -23,14 +21,12 @@ log = logging.getLogger("steamlayer_backend")
 async def lifespan(app: FastAPI):
     def _capture_loop():
         state._loop = asyncio.get_running_loop()
+
     _capture_loop()
     yield
 
-app = FastAPI(
-    title="SteamLayer Backend", 
-    version="0.1.0",
-    lifespan=lifespan
-)
+
+app = FastAPI(title="SteamLayer Backend", version="0.1.0", lifespan=lifespan)
 
 # Electron's renderer runs on a different origin during development,
 # so we allow localhost for all ports. In production the renderer is
@@ -63,10 +59,12 @@ async def generic_exception_handler(request, exc: Exception) -> JSONResponse:
 
 def main() -> None:
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=58732)
     args = parser.parse_args()
     uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="info")
+
 
 if __name__ == "__main__":
     main()

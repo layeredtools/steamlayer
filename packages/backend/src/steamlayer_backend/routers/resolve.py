@@ -4,12 +4,6 @@ import asyncio
 from functools import partial
 
 from fastapi import APIRouter, HTTPException
-
-from steamlayer_core import SteamLayerClient
-from steamlayer_core.domain.exceptions import AppIDResolutionError
-from steamlayer_core.domain.models import DiscoveryResult, ResolutionSource
-from steamlayer_core.events import AmbiguousMatchEvent, LowConfidenceEvent, ResolutionEvent
-
 from steamlayer_backend.models import (
     AmbiguousEventPayload,
     CandidateModel,
@@ -22,6 +16,10 @@ from steamlayer_backend.models import (
     ResolveRequest,
 )
 from steamlayer_backend.state import state
+from steamlayer_core import SteamLayerClient
+from steamlayer_core.domain.exceptions import AppIDResolutionError
+from steamlayer_core.domain.models import DiscoveryResult, ResolutionSource
+from steamlayer_core.events import AmbiguousMatchEvent, LowConfidenceEvent
 
 router = APIRouter()
 
@@ -34,6 +32,7 @@ def _disambiguation_handler(event: AmbiguousMatchEvent) -> DiscoveryResult:
     """
     state.set_pending(event)
     return state.wait_for_decision()
+
 
 def _confirmation_handler(event: LowConfidenceEvent) -> DiscoveryResult:
     """

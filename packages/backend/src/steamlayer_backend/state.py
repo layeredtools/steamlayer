@@ -4,7 +4,7 @@ import asyncio
 import threading
 from typing import TYPE_CHECKING, cast
 
-from steamlayer_core.domain.models import SteamlayerOptions, DiscoveryResult
+from steamlayer_core.domain.models import DiscoveryResult, SteamlayerOptions
 
 if TYPE_CHECKING:
     from steamlayer_core.events import ResolutionEvent
@@ -44,14 +44,16 @@ class AppState:
         """Enqueue a progress event for the WebSocket handler to forward."""
         assert self._loop
         self._loop.call_soon_threadsafe(
-            self.progress_queue.put_nowait, 
+            self.progress_queue.put_nowait,
             {"event": step, "detail": detail},
         )
 
     def make_progress_callback(self):
         """Returns a ProgressCallback compatible with steamlayer-core's protocol."""
+
         def _callback(step: str, detail: str) -> None:
             self.push_progress(step, detail)
+
         return _callback
 
     def set_pending(self, event: ResolutionEvent) -> None:

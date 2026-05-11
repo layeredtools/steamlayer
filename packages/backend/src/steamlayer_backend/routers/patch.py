@@ -1,12 +1,6 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
-
-from steamlayer_core import SteamlayerOptions
-from steamlayer_core.api import SteamLayerClient
-from steamlayer_core.domain.exceptions import PatchError, VaultError
-from steamlayer_core.domain.models import DLCInfo, ResolvedGame, ResolutionSource
-
 from steamlayer_backend.models import (
     PatchRequest,
     PatchResultModel,
@@ -16,6 +10,9 @@ from steamlayer_backend.models import (
 )
 from steamlayer_backend.state import state
 from steamlayer_backend.vendor import config_writer, vendor
+from steamlayer_core.api import SteamLayerClient
+from steamlayer_core.domain.exceptions import PatchError, VaultError
+from steamlayer_core.domain.models import DLCInfo, ResolutionSource, ResolvedGame
 
 router = APIRouter()
 
@@ -26,11 +23,9 @@ def _to_core_game(body: PatchRequest) -> ResolvedGame:
         game_name=body.game.game_name,
         source=ResolutionSource[body.game.source],
         confidence=body.game.confidence,
-        dlcs={
-            k: DLCInfo(appid=v.appid, name=v.name, from_cache=v.from_cache)
-            for k, v in body.game.dlcs.items()
-        },
+        dlcs={k: DLCInfo(appid=v.appid, name=v.name, from_cache=v.from_cache) for k, v in body.game.dlcs.items()},
     )
+
 
 @router.post("/patch", response_model=PatchResultModel)
 async def patch(body: PatchRequest) -> PatchResultModel:

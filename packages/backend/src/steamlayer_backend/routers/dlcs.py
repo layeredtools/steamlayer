@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
-
-from steamlayer_core.api import SteamLayerClient
-
 from backend.models import DLCInfoModel, DLCListResponse
 from backend.state import state
+from fastapi import APIRouter
+from steamlayer_core.api import SteamLayerClient
 
 router = APIRouter()
 
@@ -20,8 +18,5 @@ async def get_dlcs(appid: int) -> DLCListResponse:
         dlcs = client.fetch_dlcs(appid)
 
     return DLCListResponse(
-        dlcs={
-            k: DLCInfoModel(appid=v.appid, name=v.name, from_cache=v.from_cache)
-            for k, v in dlcs.items()
-        }
+        dlcs={k: DLCInfoModel(appid=v.appid, name=v.name, from_cache=v.from_cache) for k, v in dlcs.items()}
     )

@@ -32,9 +32,9 @@ from steamlayer_core.discovery.local import LocalDiscovery
 from steamlayer_core.discovery.matcher import NameMatcher
 from steamlayer_core.discovery.query_strategy import QueryStrategy
 from steamlayer_core.discovery.repository import AppIndexRepository
-from steamlayer_core.events import AmbiguousMatchEvent, LowConfidenceEvent
 from steamlayer_core.domain.exceptions import AppIDNotFoundError
 from steamlayer_core.domain.models import DiscoveryResult, ResolutionSource, ResolvedGame, SteamlayerOptions
+from steamlayer_core.events import AmbiguousMatchEvent, LowConfidenceEvent
 from steamlayer_core.protocols import (
     NULL_PROGRESS,
     ConfirmationHandler,
