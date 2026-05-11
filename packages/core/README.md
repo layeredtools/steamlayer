@@ -4,8 +4,8 @@
 
 [![PyPI](https://img.shields.io/pypi/v/steamlayer-core)](https://pypi.org/project/steamlayer-core/)
 [![Python](https://img.shields.io/pypi/pyversions/steamlayer-core)](https://pypi.org/project/steamlayer-core/)
-[![CI](https://img.shields.io/github/actions/workflow/status/layeredtools/steamlayer-core/ci.yml?branch=main&label=ci)](https://github.com/layeredtools/steamlayer-core/actions)
-[![License](https://img.shields.io/github/license/layeredtools/steamlayer-core)](LICENSE)
+[![CI](https://img.shields.io/github/actions/workflow/status/layeredtools/steamlayer/ci.yml?branch=main&label=ci)](https://github.com/layeredtools/steamlayer/actions)
+[![License](https://img.shields.io/github/license/layeredtools/steamlayer)](https://github.com/layeredtools/steamlayer/blob/main/LICENSE)
 
 The emulator-agnostic engine behind SteamLayer. Handles Steam game identification,
 DRM patching, and DLC hydration — with no opinion about which emulator you use.
