@@ -1,0 +1,19 @@
+[project]
+name = "steamlayer-backend"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = [
+    "steamlayer-core",
+    "fastapi>=0.111",
+    "uvicorn[standard]>=0.29",
+]
+
+[tool.uv.sources]
+steamlayer-core = { workspace = true }
+
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

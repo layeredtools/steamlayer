@@ -1,0 +1,89 @@
+# ─── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+.env
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.log
+celerybeat-schedule
+*.sage.py
+
+# ─── uv ───────────────────────────────────────────────────────────────────────
+.python-version
+
+# ─── Node ─────────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnp
+.pnp.js
+.yarn/
+
+# ─── Electron / Vite ──────────────────────────────────────────────────────────
+packages/app/out/
+packages/app/dist/
+packages/app/.vite/
+
+# ─── Build artifacts ──────────────────────────────────────────────────────────
+*.spec.js
+*.tsbuildinfo
+
+# ─── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ─── IDEs ─────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.swp
+*.swo
+*~
+
+# ─── PyInstaller ──────────────────────────────────────────────────────────────
+*.spec
+packages/backend/dist/
+packages/backend/build/
+
+# ─── Vendors ──────────────────────────────────────────────────────────────────
+vendors/
+
+# ─── Docs ─────────────────────────────────────────────────────────────────────
+site/
+
+# ─── Misc ─────────────────────────────────────────────────────────────────────
+*.bak
+*.tmp
+*.orig
+dump.rdb
+project_dump.txt

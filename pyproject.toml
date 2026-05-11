@@ -1,0 +1,35 @@
+[tool.uv.workspace]
+members = ["packages/core", "packages/backend"]
+
+[dependency-groups]
+dev = [
+    "mkdocs-material>=9.7.6",
+    "mkdocstrings[python]>=1.0.4",
+    "mypy>=2.0.0",
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.3",
+    "rich>=15.0.0",
+    "ruff>=0.15.10",
+    "types-requests>=2.33.0.20260408",
+]
+
+[tool.ruff]
+line-length = 115
+target-version = "py313"
+fix = true
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.13"
+strict = false
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = "steamlayer.tests.*"
+ignore_errors = true

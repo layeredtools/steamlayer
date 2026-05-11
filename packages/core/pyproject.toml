@@ -1,0 +1,25 @@
+[project]
+name = "steamlayer-core"
+version = "0.1.2"
+description = "Emulator-agnostic engine for identifying Steam games, patching DRM, and hydrating DLC metadata."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+requires-python = ">=3.13"
+dependencies = [
+    "requests>=2.33.1",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
+    "Environment :: Console",
+]
+
+[project.urls]
+Source = "https://github.com/layeredtools/steamlayer"
+Issues = "https://github.com/layeredtools/steamlayer/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
