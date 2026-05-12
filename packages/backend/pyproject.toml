@@ -4,14 +4,12 @@ version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
     "steamlayer-core",
-    "steamlayer-db",
     "fastapi>=0.111",
     "uvicorn[standard]>=0.29",
 ]
 
 [tool.uv.sources]
 steamlayer-core = { workspace = true }
-steamlayer-db = { workspace = true }
 
 [tool.uv]
 package = true
