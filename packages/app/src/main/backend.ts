@@ -22,8 +22,7 @@ interface HealthPollOptions {
 
 
 function resolveBackendBin(): { bin: string; args: string[]; cwd: string } {
-  const repoRoot = path.join(__dirname, "../../../..");
-
+  const repoRoot = path.join(__dirname, "../../../.."); // packages/app/out/main
   if (!app.isPackaged) {
     return {
       bin: path.join(
@@ -83,7 +82,7 @@ export async function startBackend(): Promise<BackendHandle> {
 
   return new Promise<BackendHandle>((resolve, reject) => {
     const child = execFile(bin, args, { windowsHide: true, cwd });
-    
+
     if (!app.isPackaged) {
       child.stdout?.on("data", (d: Buffer) => process.stdout.write(`[backend] ${d}`));
       child.stderr?.on("data", (d: Buffer) => process.stderr.write(`[backend] ${d}`));

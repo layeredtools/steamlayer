@@ -17,3 +17,6 @@ package = true
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[project.scripts]
+steamlayer-backend = "steamlayer_backend.main:main"

@@ -1,0 +1,9 @@
+{
+  "name": "steamlayer",
+  "private": true,
+  "workspaces": ["packages/app"],
+  "scripts": {
+    "dev": "npm run dev -w packages/app",
+    "build": "npm run build -w packages/app"
+  }
+}

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from backend.models import DLCInfoModel, DLCListResponse
-from backend.state import state
 from fastapi import APIRouter
+from steamlayer_backend.models import DLCInfoModel, DLCListResponse
+from steamlayer_backend.state import state
 from steamlayer_core.api import SteamLayerClient
 
 router = APIRouter()

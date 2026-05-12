@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 
-from backend.state import state
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from steamlayer_backend.state import state
 
 log = logging.getLogger("steamlayer_backend.ws")
 router = APIRouter()
